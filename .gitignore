@@ -11,5 +11,6 @@
 **/.cache/
 **/.vite/
 **/coverage/
+**/vite.config.ts.timestamp-*.js
 
 .tools/
