@@ -1,16 +1,14 @@
 import { defineConfig } from 'vite'
-import path from 'path'
 import tailwindcss from '@tailwindcss/vite'
 import react from '@vitejs/plugin-react'
-
 
 function figmaAssetResolver() {
   return {
     name: 'figma-asset-resolver',
-    resolveId(id) {
+    resolveId(id: string) {
       if (id.startsWith('figma:asset/')) {
         const filename = id.replace('figma:asset/', '')
-        return path.resolve(__dirname, 'src/assets', filename)
+        return new URL(`./src/assets/${filename}`, import.meta.url).pathname
       }
     },
   }
@@ -25,13 +23,29 @@ export default defineConfig({
   resolve: {
     alias: {
       // Alias @ to the src directory
-      '@': path.resolve(__dirname, './src'),
+      '@': new URL('./src', import.meta.url).pathname,
     },
   },
 
   // 👇 👇 这里是新加的，解决 ngrok 访问报错
   server: {
-    allowedHosts: ['.ngrok-free.app']
+    allowedHosts: ['.ngrok-free.app', '.trycloudflare.com'],
+    proxy: {
+      '/api': {
+        target: 'http://localhost:8080',
+        changeOrigin: true,
+      },
+    },
+  },
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          vendor: ['react', 'react-dom', 'react-router'],
+          ui: ['lucide-react', 'motion'],
+        }
+      }
+    }
   },
   // 👆 👆 就加这一段，其他不动
 

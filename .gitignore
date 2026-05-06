@@ -14,3 +14,11 @@
 **/vite.config.ts.timestamp-*.js
 
 .tools/
+**/target/
+uploads/
+*.sql
+.vscode/
+fix_start.sh
+fix_start2.sh
+fix_start3.sh
+服务器地址

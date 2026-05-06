@@ -1,68 +1,66 @@
 import * as React from "react";
 import type { Category, Product, ProductSku, SpecGroup } from "../catalog";
-import { seedCategories, seedProducts } from "../catalog";
+import * as api from "../api/adminApi";
 
-const PRODUCTS_KEY = "watch_shop_admin_products";
-const CATEGORIES_KEY = "watch_shop_admin_categories";
 const CATALOG_CHANGED_EVENT = "watch_shop_admin_catalog_changed";
 
-function canUseStorage() {
-  return typeof window !== "undefined" && typeof window.localStorage !== "undefined";
-}
-
-function safeParseJson<T>(value: string | null): T | null {
-  if (!value) return null;
-  try {
-    return JSON.parse(value) as T;
-  } catch {
-    return null;
-  }
-}
+let cachedCategories: Category[] = [];
+let cachedProducts: Product[] = [];
 
 function notifyCatalogChanged() {
-  if (!canUseStorage()) return;
+  if (typeof window === "undefined") return;
   window.dispatchEvent(new Event(CATALOG_CHANGED_EVENT));
 }
 
-function ensureSeeded() {
-  if (!canUseStorage()) return;
-  if (!localStorage.getItem(PRODUCTS_KEY)) localStorage.setItem(PRODUCTS_KEY, JSON.stringify(seedProducts));
-  if (!localStorage.getItem(CATEGORIES_KEY)) localStorage.setItem(CATEGORIES_KEY, JSON.stringify(seedCategories));
+export async function refreshCatalog() {
+  const [categories, products] = await Promise.all([api.getCategories(), api.getProducts()]);
+  cachedCategories = categories;
+  cachedProducts = normalizeProducts(products);
+  notifyCatalogChanged();
+  return { categories: cachedCategories, products: cachedProducts };
 }
 
 export function readCategories(): Category[] {
-  ensureSeeded();
-  if (!canUseStorage()) return seedCategories;
-  return safeParseJson<Category[]>(localStorage.getItem(CATEGORIES_KEY)) ?? seedCategories;
+  return cachedCategories;
 }
 
 export function readProducts(): Product[] {
-  ensureSeeded();
-  if (!canUseStorage()) return seedProducts;
-  const raw = safeParseJson<Product[]>(localStorage.getItem(PRODUCTS_KEY)) ?? seedProducts;
-  return normalizeProducts(raw);
+  return cachedProducts;
 }
 
-export function writeCategories(categories: Category[]) {
-  ensureSeeded();
-  if (!canUseStorage()) return;
-  localStorage.setItem(CATEGORIES_KEY, JSON.stringify(categories));
-  notifyCatalogChanged();
+export async function createCategory(category: Category) {
+  await api.createCategory(category);
+  await refreshCatalog();
 }
 
-export function writeProducts(products: Product[]) {
-  ensureSeeded();
-  if (!canUseStorage()) return;
-  localStorage.setItem(PRODUCTS_KEY, JSON.stringify(normalizeProducts(products)));
-  notifyCatalogChanged();
+export async function updateCategory(category: Category) {
+  await api.updateCategory(category);
+  await refreshCatalog();
 }
 
-export function resetCatalog() {
-  ensureSeeded();
-  if (!canUseStorage()) return;
-  localStorage.setItem(CATEGORIES_KEY, JSON.stringify(seedCategories));
-  localStorage.setItem(PRODUCTS_KEY, JSON.stringify(normalizeProducts(seedProducts)));
-  notifyCatalogChanged();
+export async function deleteCategory(id: string) {
+  await api.deleteCategory(id);
+  await refreshCatalog();
+}
+
+export async function createProduct(product: Product) {
+  await api.createProduct(product);
+  await refreshCatalog();
+}
+
+export async function updateProduct(product: Product) {
+  await api.updateProduct(product);
+  await refreshCatalog();
+}
+
+export async function deleteProduct(id: string) {
+  await api.deleteProduct(id);
+  await refreshCatalog();
+}
+
+export async function resetCatalog() {
+  await api.resetCatalog();
+  await refreshCatalog();
 }
 
 function normalizeProducts(products: Product[]): Product[] {
@@ -127,6 +125,8 @@ function normalizeProduct(product: Product): Product {
 export function useCatalog() {
   const [categories, setCategories] = React.useState(() => readCategories());
   const [products, setProducts] = React.useState(() => readProducts());
+  const [loading, setLoading] = React.useState(true);
+  const [error, setError] = React.useState<string | null>(null);
 
   React.useEffect(() => {
     const refresh = () => {
@@ -136,12 +136,22 @@ export function useCatalog() {
 
     refresh();
     window.addEventListener(CATALOG_CHANGED_EVENT, refresh);
-    window.addEventListener("storage", refresh);
+    (async () => {
+      setLoading(true);
+      setError(null);
+      try {
+        await refreshCatalog();
+      } catch (e) {
+        const msg = e instanceof Error ? e.message : "加载失败";
+        setError(msg);
+      } finally {
+        setLoading(false);
+      }
+    })();
     return () => {
       window.removeEventListener(CATALOG_CHANGED_EVENT, refresh);
-      window.removeEventListener("storage", refresh);
     };
   }, []);
 
-  return { categories, products };
+  return { categories, products, loading, error, refresh: refreshCatalog };
 }

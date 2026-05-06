@@ -22,7 +22,7 @@ export function Modal({
         <div className="w-full max-w-4xl rounded-xl admin-panel overflow-hidden max-h-[90svh] flex flex-col">
           <div className="shrink-0 flex items-center justify-between gap-4 border-b border-[var(--line)] px-5 py-4">
             <div className="font-semibold text-[var(--gold-2)]">{title}</div>
-            <button className="text-[var(--muted)] hover:text-[var(--text)]" onClick={onClose}>
+            <button className="text-[var(--muted)] hover:text-[var(--text)] whitespace-nowrap shrink-0" onClick={onClose}>
               关闭
             </button>
           </div>

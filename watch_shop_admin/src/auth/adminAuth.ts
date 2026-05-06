@@ -1,19 +1,20 @@
-const TOKEN_KEY = "watch_shop_admin_token";
+import { clearToken, getToken, login } from "../api/adminApi";
 
 export function isAdminAuthed() {
   if (typeof window === "undefined") return false;
-  return Boolean(window.localStorage.getItem(TOKEN_KEY));
+  return Boolean(getToken());
 }
 
-export function loginAdmin(username: string, password: string) {
-  const ok = username === "admin" && password === "admin123";
-  if (!ok) return { ok: false as const, message: "账号或密码错误" };
-  window.localStorage.setItem(TOKEN_KEY, "ok");
-  return { ok: true as const };
+export async function loginAdmin(username: string, password: string) {
+  try {
+    const data = await login(username, password);
+    return { ok: true as const, mustChangePassword: Boolean(data.mustChangePassword) };
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : "账号或密码错误";
+    return { ok: false as const, message: msg || "账号或密码错误" };
+  }
 }
 
 export function logoutAdmin() {
-  if (typeof window === "undefined") return;
-  window.localStorage.removeItem(TOKEN_KEY);
+  clearToken();
 }
-

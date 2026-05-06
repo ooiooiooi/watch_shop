@@ -1,12 +1,16 @@
 import { Link, NavLink, Outlet, useNavigate } from "react-router-dom";
-import { LayoutDashboardIcon, PackageIcon, TagsIcon, LogOutIcon, RotateCcwIcon } from "lucide-react";
+import { LayoutDashboardIcon, PackageIcon, TagsIcon, LogOutIcon, BadgeIcon, LayersIcon, HeadsetIcon, KeyRoundIcon, RadarIcon } from "lucide-react";
 import { logoutAdmin } from "../auth/adminAuth";
-import { resetCatalog } from "../store/catalogStore";
+import { changePassword } from "../api/adminApi";
 
 const nav = [
   { to: "/dashboard", label: "仪表盘", icon: LayoutDashboardIcon },
   { to: "/products", label: "商品管理", icon: PackageIcon },
   { to: "/categories", label: "分类管理", icon: TagsIcon },
+  { to: "/brands", label: "品牌管理", icon: BadgeIcon },
+  { to: "/models", label: "型号管理", icon: LayersIcon },
+  { to: "/visitors", label: "访客记录", icon: RadarIcon },
+  { to: "/customer-service", label: "客服配置", icon: HeadsetIcon },
 ];
 
 export function AdminLayout() {
@@ -48,10 +52,22 @@ export function AdminLayout() {
             <div className="ml-auto flex items-center gap-2">
               <button
                 className="admin-btn admin-btn-ghost inline-flex items-center gap-2"
-                onClick={() => resetCatalog()}
+                onClick={async () => {
+                  const oldPassword = window.prompt("请输入当前密码");
+                  if (!oldPassword) return;
+                  const newPassword = window.prompt("请输入新密码（至少 8 位）");
+                  if (!newPassword) return;
+                  if (newPassword.trim().length < 8) return window.alert("新密码长度至少 8 位");
+                  try {
+                    await changePassword(oldPassword, newPassword);
+                    window.alert("密码修改成功");
+                  } catch {
+                    window.alert("密码修改失败，请检查当前密码");
+                  }
+                }}
               >
-                <RotateCcwIcon size={16} />
-                重置数据
+                <KeyRoundIcon size={16} />
+                修改密码
               </button>
               <button
                 className="admin-btn admin-btn-ghost inline-flex items-center gap-2"

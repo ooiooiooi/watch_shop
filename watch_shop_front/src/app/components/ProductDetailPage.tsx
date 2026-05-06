@@ -1,12 +1,19 @@
 import { useState, useEffect } from "react";
-import { useParams, Link } from "react-router";
-import { Shield, Truck, RotateCcw, Package, Minus, Plus } from "lucide-react";
-import { products, type ProductSku, type SpecGroup } from "../data";
+import { useParams, Link, useLocation, useNavigate } from "react-router";
+import { Shield, Truck, RotateCcw, Minus, Plus, ArrowLeft, ArrowRight, X } from "lucide-react";
+import DOMPurify from "dompurify";
+import { type Product, type ProductSku, type SpecGroup } from "../data";
 import { ProductCard } from "./ProductCard";
-import { GoldButton } from "./GoldButton";
-import { Tag } from "./Tag";
+import { Tag, getDisplayTag } from "./Tag";
 import { useI18n } from "../i18n";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "./ui/accordion";
+import { Skeleton } from "./ui/skeleton";
+import { usePublicProduct } from "../hooks/usePublicProduct";
+import { usePublicTaxonomy } from "../hooks/usePublicTaxonomy";
+import { getPublicRelatedProducts } from "../catalogApi";
+import { useCustomerService } from "../hooks/useCustomerService";
+import { applyTemplate, buildWhatsAppHref } from "../utils/whatsapp";
+import { resolveMediaUrl } from "../media";
 
 function DetailCountdown() {
   const { t } = useI18n();
@@ -26,11 +33,11 @@ function DetailCountdown() {
   }, []);
   const pad = (n: number) => String(n).padStart(2, "0");
   return (
-    <div className="bg-secondary border border-border p-4 flex items-center justify-between">
-      <span className="text-xs tracking-[0.15em] uppercase text-muted-foreground">{t("offerEndsIn")}</span>
-      <div className="flex gap-2">
+    <div className="rounded-xl md:rounded-2xl bg-secondary border border-border p-3 md:p-4 flex flex-col sm:flex-row items-center justify-between gap-2 md:gap-4">
+      <span className="text-[10px] md:text-xs tracking-[0.12em] md:tracking-[0.15em] uppercase text-muted-foreground">{t("offerEndsIn")}</span>
+      <div className="flex gap-1.5 md:gap-2">
         {[pad(time.h), pad(time.m), pad(time.s)].map((v, i) => (
-          <span key={i} className="bg-background text-primary px-2 py-1 text-sm" style={{ fontFamily: "'Playfair Display', serif" }}>{v}</span>
+          <span key={i} className="rounded-md bg-background text-primary px-1.5 md:px-2 py-0.5 md:py-1 text-xs md:text-sm" style={{ fontFamily: "'Playfair Display', serif" }}>{v}</span>
         ))}
       </div>
     </div>
@@ -40,25 +47,148 @@ function DetailCountdown() {
 export function ProductDetailPage() {
   const { t } = useI18n();
   const { id } = useParams();
-  const product = products.find((p) => p.id === id) || products[0];
+  const location = useLocation();
+  const navigate = useNavigate();
+  const categoryHref = `/category${location.search || ""}`;
+  const { product, loading: productLoading } = usePublicProduct(id);
+  const { brands, models } = usePublicTaxonomy();
+  const { config } = useCustomerService();
   const [quantity, setQuantity] = useState(1);
-  const recommended = products.filter((p) => p.id !== product.id && p.status === "on").slice(0, 4);
+  const [recommended, setRecommended] = useState<Product[]>([]);
+  const [recommendedLoading, setRecommendedLoading] = useState(false);
   const [activeMedia, setActiveMedia] = useState(0);
   const [selectedSpecs, setSelectedSpecs] = useState<Record<string, string>>({});
+  const [mobileCollectionsOpen, setMobileCollectionsOpen] = useState(false);
+  const [mobileDrawerBrandId, setMobileDrawerBrandId] = useState<string | null>(null);
+
+  const selectedBrandId = new URLSearchParams(location.search).get("brand");
+  const selectedModelId = new URLSearchParams(location.search).get("model");
+
+  useEffect(() => {
+    if (!product) return;
+    setActiveMedia(0);
+    setQuantity(1);
+    const skus: ProductSku[] = product.skus ?? [];
+    const preferred =
+      skus.find((s) => s.enabled && s.stock > 0) ?? skus.find((s) => s.enabled) ?? skus[0];
+    setSelectedSpecs(preferred?.specs ?? {});
+
+    // Update Meta tags
+    if (product.metaTitle || product.name) {
+      document.title = product.metaTitle || `${product.name} | VS Factory`;
+    }
+    const metaDesc = document.querySelector('meta[name="description"]');
+    if (metaDesc) {
+      metaDesc.setAttribute("content", product.metaDescription || product.description?.replace(/<[^>]*>?/gm, "").substring(0, 150) || "");
+    }
+  }, [product]);
+
+  useEffect(() => {
+    let alive = true;
+    (async () => {
+      if (!product) return;
+      setRecommendedLoading(true);
+      try {
+        const items = await getPublicRelatedProducts(product.id, 4);
+        if (!alive) return;
+        setRecommended(items);
+      } catch {
+        if (!alive) return;
+        setRecommended([]);
+      } finally {
+        if (!alive) return;
+        setRecommendedLoading(false);
+      }
+    })();
+    return () => {
+      alive = false;
+    };
+  }, [product?.id]);
+
+  useEffect(() => {
+    setMobileDrawerBrandId(selectedBrandId || null);
+  }, [selectedBrandId]);
+
+  useEffect(() => {
+    function handleToggleDrawer() {
+      if (window.innerWidth >= 1024) return;
+      setMobileCollectionsOpen((prev) => !prev);
+    }
+
+    window.addEventListener("toggle-category-drawer", handleToggleDrawer);
+    return () => window.removeEventListener("toggle-category-drawer", handleToggleDrawer);
+  }, []);
+
+  useEffect(() => {
+    function handleResize() {
+      if (window.innerWidth >= 1024) {
+        setMobileCollectionsOpen(false);
+      }
+    }
+
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
+
+  useEffect(() => {
+    window.dispatchEvent(new CustomEvent("category-drawer-state", { detail: { open: mobileCollectionsOpen } }));
+  }, [mobileCollectionsOpen]);
+
+  if (productLoading) {
+    return (
+      <div className="pt-20 md:pt-24">
+        <div className="max-w-7xl mx-auto px-4 md:px-8 py-6 md:py-8">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 md:gap-10 lg:gap-16 items-start">
+            <div>
+              <Skeleton className="w-full aspect-square rounded-xl md:rounded-2xl" />
+              <div className="mt-5 flex gap-3 md:gap-4 overflow-x-auto pb-2">
+                <Skeleton className="h-16 w-16 sm:h-20 sm:w-20 rounded-xl" />
+                <Skeleton className="h-16 w-16 sm:h-20 sm:w-20 rounded-xl" />
+                <Skeleton className="h-16 w-16 sm:h-20 sm:w-20 rounded-xl" />
+              </div>
+            </div>
+            <div className="space-y-4 md:space-y-6">
+              <Skeleton className="h-4 w-1/4" />
+              <Skeleton className="h-10 w-3/4" />
+              <Skeleton className="h-3 w-1/2" />
+              <div className="py-4 md:py-6 border-y border-border/50">
+                <Skeleton className="h-8 w-1/3 mb-2" />
+                <Skeleton className="h-4 w-1/4" />
+              </div>
+              <Skeleton className="h-20 w-full" />
+              <Skeleton className="h-12 w-full rounded-full" />
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (!product) {
+    return (
+      <div className="pt-20 md:pt-24">
+        <div className="max-w-7xl mx-auto px-4 md:px-8 py-20 text-center">
+          <div className="text-foreground text-lg" style={{ fontFamily: "'Playfair Display', serif" }}>
+            {t("productNotFound")}
+          </div>
+          <div className="mt-6">
+            <Link to={categoryHref} className="text-primary hover:underline">
+              {t("backToList")}
+            </Link>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   const specGroups: SpecGroup[] = product.specGroups ?? [];
   const skus: ProductSku[] = product.skus ?? [];
 
-  const gallery = [product.image, product.image, product.image, product.image];
+  const gallery = (product.images && product.images.length > 0 ? product.images : [product.image])
+    .map((s) => (s ?? "").trim())
+    .filter((s) => s.length > 0)
+    .slice(0, 12);
   const heroImage = gallery[Math.min(activeMedia, gallery.length - 1)];
-
-  useEffect(() => {
-    setActiveMedia(0);
-    setQuantity(1);
-    const preferred =
-      skus.find((s) => s.enabled && s.stock > 0) ?? skus.find((s) => s.enabled) ?? skus[0];
-    setSelectedSpecs(preferred?.specs ?? {});
-  }, [product.id]);
 
   const matchPartial = (sku: ProductSku, selected: Record<string, string>, ignore?: string) => {
     return specGroups.every((g) => {
@@ -84,72 +214,221 @@ export function ProductDetailPage() {
   const canBuy = product.status === "on" && Boolean(activeSku?.enabled) && (activeSku?.stock ?? 0) > 0;
   const isOffShelf = product.status !== "on";
 
+  const contactHref = (() => {
+    if (!config.whatsapp) return null;
+    const url = typeof window === "undefined" ? "" : window.location.href;
+    const vars = {
+      defaultMessage: config.defaultMessage ?? t("csDefaultMessage"),
+      productName: product.name,
+      productId: product.id,
+      url,
+    };
+    const tpl = config.orderMessageTemplate ?? "{defaultMessage}\n{productName} (ID: {productId})\n{url}";
+    const text = applyTemplate(tpl, vars).trim();
+    return buildWhatsAppHref(config.whatsapp, text);
+  })();
+
+  const serviceHighlights = [
+    { icon: Truck, title: "Preparing Watches", value: "24-48 Hours" },
+    { icon: Truck, title: "Express Delivery", value: "5-10 Business Days" },
+    { icon: Shield, title: "Warranty", value: "2 Years" },
+    { icon: RotateCcw, title: "Free 14-Days Returns", value: "Patek Philippe Annual Calendar" },
+  ];
+
+  const sortedBrands = [...brands].sort((a, b) => a.name.localeCompare(b.name));
+  const mobileDrawerBrandModels = mobileDrawerBrandId
+    ? models.filter((m) => m.brandId === mobileDrawerBrandId).sort((a, b) => a.name.localeCompare(b.name))
+    : [];
+  const mobileDrawerBrandName = mobileDrawerBrandId
+    ? brands.find((b) => b.id === mobileDrawerBrandId)?.name ?? mobileDrawerBrandId
+    : t("allBrands");
+  const displayTag = getDisplayTag(product);
+
+  function closeMobileDrawer() {
+    setMobileCollectionsOpen(false);
+    setMobileDrawerBrandId(selectedBrandId || null);
+  }
+
+  function navigateWithDrawer(path: string) {
+    closeMobileDrawer();
+    navigate(path);
+  }
+
+  function navigateToCategory(brand: string | null, model: string | null) {
+    const params = new URLSearchParams(location.search);
+    params.delete("cat");
+    params.delete("sort");
+    if (!brand || brand === "all") params.delete("brand");
+    else params.set("brand", brand);
+    if (!model || model === "all") params.delete("model");
+    else params.set("model", model);
+    closeMobileDrawer();
+    navigate(`/category${params.toString() ? `?${params.toString()}` : ""}`);
+  }
+
+  function renderMobileDrawerContent() {
+    const showingModels = mobileDrawerBrandId !== null;
+
+    return (
+      <div className="flex h-full min-w-0 flex-1 flex-col bg-secondary text-foreground">
+        <div className="flex items-center justify-between border-b border-border/70 px-4 py-5">
+          <button
+            onClick={() => navigateWithDrawer("/")}
+            className="text-left text-base tracking-[0.12em] uppercase text-primary transition-colors hover:text-primary/80"
+            style={{ fontFamily: "'Playfair Display', serif" }}
+          >
+            {t("home")}
+          </button>
+          <button
+            onClick={closeMobileDrawer}
+            className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-border/60 text-muted-foreground transition-colors hover:border-primary/50 hover:text-primary"
+          >
+            <X size={18} />
+          </button>
+        </div>
+
+        <div className="flex items-center justify-between border-b border-border/70 px-4 py-4">
+          <div className="min-w-0">
+            <div className="text-[10px] tracking-[0.22em] uppercase text-muted-foreground">{t("shopByBrand")}</div>
+            <div className="mt-1 truncate text-lg text-foreground" style={{ fontFamily: "'Playfair Display', serif" }}>
+              {showingModels ? mobileDrawerBrandName : t("filterBrand")}
+            </div>
+          </div>
+        </div>
+
+        {showingModels ? (
+          <div className="flex min-h-0 flex-1 flex-col">
+            <button
+              onClick={() => setMobileDrawerBrandId(null)}
+              className="flex items-center gap-2 border-b border-border/60 px-4 py-3 text-left text-sm text-muted-foreground transition-colors hover:bg-background/40 hover:text-primary"
+            >
+              <ArrowLeft size={16} />
+              {t("allBrands")}
+            </button>
+            <button
+              onClick={() => navigateToCategory(mobileDrawerBrandId, "all")}
+              className={`border-b border-border/60 px-4 py-4 text-left text-[15px] transition-colors ${(!selectedModelId || selectedModelId === "all") && selectedBrandId === mobileDrawerBrandId ? "bg-background/80 font-medium text-primary" : "text-foreground hover:bg-background/40"}`}
+            >
+              {t("allModels")}
+            </button>
+            <div className="min-h-0 flex-1 overflow-y-auto">
+              {mobileDrawerBrandModels.map((m) => {
+                const active = selectedBrandId === mobileDrawerBrandId && selectedModelId === m.id;
+                return (
+                  <button
+                    key={m.id}
+                    onClick={() => navigateToCategory(mobileDrawerBrandId, m.id)}
+                    className={`flex w-full items-center justify-between border-b border-border/60 px-4 py-4 text-left text-[15px] transition-colors ${active ? "bg-background/80 font-medium text-primary" : "text-foreground hover:bg-background/40"}`}
+                  >
+                    <span className="truncate">{m.name}</span>
+                    <ArrowRight size={15} className={active ? "shrink-0 text-primary/70" : "shrink-0 text-muted-foreground"} />
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        ) : (
+          <div className="min-h-0 flex-1 overflow-y-auto">
+            {sortedBrands.map((brand) => {
+              const active = selectedBrandId === brand.id;
+              return (
+                <button
+                  key={brand.id}
+                  onClick={() => setMobileDrawerBrandId(brand.id)}
+                  className={`flex w-full items-center justify-between border-b border-border/60 px-4 py-4 text-left text-[15px] transition-colors ${active ? "bg-background/80 font-medium text-primary" : "text-foreground hover:bg-background/40"}`}
+                >
+                  <span className="truncate">{brand.name}</span>
+                  <ArrowRight size={16} className={active ? "shrink-0 text-primary/70" : "shrink-0 text-muted-foreground"} />
+                </button>
+              );
+            })}
+          </div>
+        )}
+
+        <div className="border-t border-border/70 px-4 py-5">
+          <button
+            onClick={() => navigateWithDrawer("/about")}
+            className="text-left text-base tracking-[0.12em] uppercase text-primary transition-colors hover:text-primary/80"
+            style={{ fontFamily: "'Playfair Display', serif" }}
+          >
+            {t("about")}
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="pt-20 md:pt-24">
-      <div className="max-w-7xl mx-auto px-4 md:px-8 py-4">
-        <div className="flex items-center gap-2 text-xs text-muted-foreground tracking-widest uppercase">
+      <div className="max-w-7xl mx-auto px-4 md:px-8 py-3 md:py-4">
+        <div className="flex items-center gap-1 md:gap-2 text-[10px] md:text-xs text-muted-foreground tracking-widest uppercase flex-wrap">
           <Link to="/" className="hover:text-primary transition-colors">{t("home")}</Link>
           <span>/</span>
-          <Link to="/category" className="hover:text-primary transition-colors">{t("collections")}</Link>
+          <Link to={categoryHref} className="hover:text-primary transition-colors">{t("collections")}</Link>
           <span>/</span>
           <span className="text-foreground">{product.name}</span>
         </div>
       </div>
 
-      <div className="max-w-7xl mx-auto px-4 md:px-8 py-8">
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 lg:gap-16 items-start">
+      <div className="max-w-7xl mx-auto px-4 md:px-8 py-6 md:py-8">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 md:gap-10 lg:gap-16 items-start">
           <div>
-            <div className="relative bg-secondary border border-border overflow-hidden">
+            <div className="relative rounded-xl md:rounded-2xl bg-secondary border border-border overflow-hidden">
               <div className="aspect-square">
-                <img src={heroImage} alt={product.name} className="w-full h-full object-cover" />
+                <img src={resolveMediaUrl(heroImage)} alt={product.name} loading="lazy" decoding="async" className="w-full h-full object-cover" />
               </div>
-              {product.tag && (
-                <div className="absolute top-6 left-6">
-                  <Tag label={product.tag} />
+              {displayTag && (
+                <div className="absolute top-3 md:top-6 left-3 md:left-6">
+                  <Tag label={displayTag} />
                 </div>
               )}
             </div>
 
-            <div className="mt-5 flex gap-4 overflow-x-auto pb-2" style={{ scrollbarWidth: "none" }}>
+            <div className="mt-5 flex gap-3 md:gap-4 overflow-x-auto pb-2" style={{ scrollbarWidth: "none" }}>
               {gallery.map((src, idx) => (
                 <button
                   key={idx}
                   onClick={() => setActiveMedia(idx)}
                   className={[
-                    "h-20 w-20 shrink-0 border overflow-hidden transition-colors",
+                    "h-16 w-16 sm:h-20 sm:w-20 shrink-0 rounded-xl border overflow-hidden transition-colors",
                     idx === activeMedia ? "border-primary" : "border-border hover:border-primary/70",
                   ].join(" ")}
                   aria-label={`media-${idx + 1}`}
                 >
-                  <img src={src} alt={product.name} className="h-full w-full object-cover" />
+                  <img src={resolveMediaUrl(src)} alt={product.name} loading="lazy" decoding="async" className="h-full w-full object-cover" />
                 </button>
               ))}
             </div>
           </div>
 
           <div className="lg:sticky lg:top-28">
-            <div className="space-y-6">
+            <div className="space-y-4 md:space-y-6">
               <div>
-                <p className="text-primary text-xs tracking-[0.35em] uppercase mb-2">{product.collection}</p>
-                <h1 className="text-3xl md:text-4xl text-foreground leading-tight" style={{ fontFamily: "'Playfair Display', serif" }}>
+                <p className="text-primary text-xs tracking-[0.3em] md:tracking-[0.35em] uppercase mb-2">{product.collection}</p>
+                <h1 className="text-2xl md:text-4xl text-foreground leading-tight" style={{ fontFamily: "'Playfair Display', serif" }}>
                   {product.name}
                 </h1>
-                <p className="mt-2 text-xs tracking-[0.2em] uppercase text-muted-foreground">
-                  SKU {product.id} · {product.category}
+                <p className="mt-2 text-[10px] md:text-xs tracking-[0.15em] md:tracking-[0.2em] uppercase text-muted-foreground break-words">
+                  SKU {product.id}
+                  {product.brand ? ` · ${product.brand}` : ""}
+                  {product.model ? ` · ${product.model}` : ""}
+                  {product.reference ? ` · ${product.reference}` : ""}
+                  {" · "}
+                  {product.category}
                 </p>
               </div>
 
-              <div className="flex items-end gap-4 flex-wrap">
-                <span className="text-2xl text-foreground" style={{ fontFamily: "'Playfair Display', serif" }}>
+              <div className="flex items-end gap-3 md:gap-4 flex-wrap">
+                <span className="text-xl md:text-2xl text-foreground" style={{ fontFamily: "'Playfair Display', serif" }}>
                   ${displayPrice.toLocaleString()}
                 </span>
                 {displayOriginalPrice && (
-                  <span className="text-muted-foreground line-through">
+                  <span className="text-muted-foreground line-through text-sm md:text-base">
                     ${displayOriginalPrice.toLocaleString()}
                   </span>
                 )}
                 {saveAmount > 0 && (
-                  <span className="text-red-500 text-xs tracking-widest uppercase">
+                  <span className="text-red-500 text-[10px] md:text-xs tracking-widest uppercase">
                     {t("save")} ${saveAmount.toLocaleString()}
                   </span>
                 )}
@@ -157,20 +436,20 @@ export function ProductDetailPage() {
 
               {saveAmount > 0 && <DetailCountdown />}
 
-              <div className="space-y-5 border-t border-border pt-6">
+              <div className="space-y-4 md:space-y-5 border-t border-border pt-5 md:pt-6">
                 {isOffShelf && (
-                  <div className="border border-border bg-secondary p-4">
-                    <div className="text-xs tracking-[0.25em] uppercase text-muted-foreground">该商品已下架</div>
+                  <div className="rounded-xl md:rounded-2xl border border-border bg-secondary p-3 md:p-4">
+                    <div className="text-xs tracking-[0.2em] md:tracking-[0.25em] uppercase text-muted-foreground">{t("offShelf")}</div>
                   </div>
                 )}
 
                 {specGroups.map((group) => {
                   return (
                     <div key={group.name}>
-                      <p className="text-xs tracking-[0.25em] uppercase text-muted-foreground mb-3">
+                      <p className="text-xs tracking-[0.25em] uppercase text-muted-foreground mb-3 break-words">
                         {group.name} · {selectedSpecs[group.name] || "—"}
                       </p>
-                      <div className="flex gap-3 flex-wrap">
+                      <div className="flex gap-2 md:gap-3 flex-wrap">
                         {group.options.map((opt) => {
                           const exists = skus.some(
                             (s) => s.enabled && matchPartial(s, selectedSpecs, group.name) && s.specs[group.name] === opt
@@ -183,7 +462,7 @@ export function ProductDetailPage() {
                               s.specs[group.name] === opt
                           );
                           const selected = selectedSpecs[group.name] === opt;
-                          const disabled = !exists;
+                          const disabled = !hasStock;
                           return (
                             <button
                               key={opt}
@@ -193,7 +472,7 @@ export function ProductDetailPage() {
                                 setQuantity(1);
                               }}
                               className={[
-                                "px-5 py-2 text-xs tracking-widest border transition-colors",
+                                "px-5 py-2 rounded-full text-xs tracking-widest border transition-colors whitespace-nowrap shrink-0",
                                 selected
                                   ? "bg-primary text-primary-foreground border-primary"
                                   : "border-border text-muted-foreground hover:border-primary",
@@ -212,46 +491,64 @@ export function ProductDetailPage() {
                 })}
 
                 <div>
-                  <p className="text-xs tracking-[0.25em] uppercase text-muted-foreground mb-3">{t("quantity")}</p>
-                  <div className="inline-flex items-center border border-border bg-secondary">
+                  <p className="text-xs tracking-[0.2em] md:tracking-[0.25em] uppercase text-muted-foreground mb-3">{t("quantity")}</p>
+                  <div className="inline-flex items-center rounded-full border border-border bg-secondary overflow-hidden">
                     <button
                       onClick={() => setQuantity(Math.max(1, quantity - 1))}
                       disabled={quantity <= 1 || !canBuy}
-                      className="px-4 py-3 text-muted-foreground hover:text-primary transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="px-3 md:px-4 py-2.5 md:py-3 text-muted-foreground hover:text-primary transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                       aria-label="decrease"
                     >
-                      <Minus size={14} />
+                      <Minus size={12} className="md:size-14" />
                     </button>
-                    <span className="px-6 py-3 text-foreground text-sm">{quantity}</span>
+                    <span className="px-4 md:px-6 py-2.5 md:py-3 text-foreground text-sm">{quantity}</span>
                     <button
                       onClick={() => setQuantity(Math.min(maxQty, quantity + 1))}
                       disabled={quantity >= maxQty || !canBuy}
-                      className="px-4 py-3 text-muted-foreground hover:text-primary transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="px-3 md:px-4 py-2.5 md:py-3 text-muted-foreground hover:text-primary transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                       aria-label="increase"
                     >
-                      <Plus size={14} />
+                      <Plus size={12} className="md:size-14" />
                     </button>
                   </div>
                   <div className="mt-2 text-xs tracking-[0.15em] uppercase text-muted-foreground">
-                    {activeSku ? `库存 ${activeSku.stock}` : ""}
+                    {activeSku ? `${t("stock")} ${activeSku.stock}` : ""}
                   </div>
                 </div>
 
                 <div className="flex flex-col gap-3">
-                  <GoldButton fullWidth disabled={!canBuy}>{t("addToCart")}</GoldButton>
-                  <GoldButton variant="outline" fullWidth disabled={!canBuy}>{t("buyNow")}</GoldButton>
+                  {contactHref && (
+                    <div className="space-y-2">
+                      <a
+                        href={contactHref}
+                        target="_blank"
+                        rel="noreferrer"
+                        className={[
+                          "inline-flex w-full items-center justify-center rounded-full px-6 md:px-8 py-3 md:py-4 tracking-[0.15em] md:tracking-[0.2em] uppercase text-xs transition-all duration-300",
+                          "border border-border text-muted-foreground hover:border-primary hover:text-primary",
+                        ].join(" ")}
+                      >
+                        {(config.orderButtonLabel && config.orderButtonLabel.trim()) ? config.orderButtonLabel : t("contactWhatsapp")}
+                      </a>
+                      {(config.displayName || config.hours) && (
+                        <div className="text-center text-xs text-muted-foreground">
+                          {config.displayName ? <span>{config.displayName}</span> : null}
+                          {config.displayName && config.hours ? <span> · </span> : null}
+                          {config.hours ? <span>{config.hours}</span> : null}
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
 
-                <div className="space-y-2 pt-2">
-                  {[
-                    { icon: Truck, text: t("freeShipping") },
-                    { icon: RotateCcw, text: t("dayReturns") },
-                    { icon: Shield, text: t("yearWarranty") },
-                    { icon: Package, text: t("luxuryPackaging") },
-                  ].map((item) => (
-                    <div key={item.text} className="flex items-center gap-3 text-muted-foreground">
-                      <item.icon size={16} className="text-primary shrink-0" strokeWidth={1.5} />
-                      <span className="text-xs tracking-[0.15em] uppercase">{item.text}</span>
+                <div className="space-y-3 pt-2">
+                  {serviceHighlights.map((item) => (
+                    <div key={item.title} className="flex items-start gap-3 md:gap-4 text-muted-foreground">
+                      <item.icon size={18} className="mt-0.5 md:size-5 text-primary shrink-0" strokeWidth={1.5} />
+                      <div className="flex min-w-0 flex-1 items-start justify-between gap-4 border-b border-border/40 pb-3">
+                        <span className="text-xs md:text-sm text-foreground">{item.title}</span>
+                        <span className="shrink-0 text-right text-xs md:text-sm text-muted-foreground">{item.value}</span>
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -260,17 +557,18 @@ export function ProductDetailPage() {
           </div>
         </div>
 
-        <div className="mt-12 grid grid-cols-1 lg:grid-cols-2 gap-10 lg:gap-16">
+        <div className="mt-8 md:mt-12 grid grid-cols-1 lg:grid-cols-2 gap-6 md:gap-10 lg:gap-16">
           <div className="border-t border-border pt-6">
             <Accordion type="single" collapsible defaultValue="desc">
               <AccordionItem value="desc" className="border-b-0">
-                <AccordionTrigger className="hover:no-underline text-xs tracking-[0.3em] uppercase text-foreground">
-                  DESCRIPTION
+                <AccordionTrigger className="hover:no-underline text-xs tracking-[0.2em] uppercase text-foreground">
+                  {t("descriptionTitle")}
                 </AccordionTrigger>
                 <AccordionContent className="text-muted-foreground">
-                  <div className="space-y-4 text-sm leading-relaxed">
-                    <p>{product.description}</p>
-                  </div>
+                  <div
+                    className="space-y-4 text-sm leading-relaxed prose prose-sm max-w-none dark:prose-invert"
+                    dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(product.description || "") }}
+                  />
                 </AccordionContent>
               </AccordionItem>
             </Accordion>
@@ -279,22 +577,22 @@ export function ProductDetailPage() {
           <div className="border-t border-border pt-6">
             <Accordion type="single" collapsible defaultValue="specs">
               <AccordionItem value="specs" className="border-b-0">
-                <AccordionTrigger className="hover:no-underline text-xs tracking-[0.3em] uppercase text-foreground">
-                  SPECIFICATIONS
+                <AccordionTrigger className="hover:no-underline text-xs tracking-[0.2em] uppercase text-foreground">
+                  {t("specificationsTitle")}
                 </AccordionTrigger>
                 <AccordionContent className="text-muted-foreground">
                   <dl className="grid grid-cols-1 gap-2 text-sm">
                     {[
-                      ["MODEL", product.name],
-                      ["COLLECTION", product.collection],
-                      ["CATEGORY", product.category],
-                      ["REFERENCE", product.id],
+                      [t("specModel").toUpperCase(), product.model ?? product.name],
+                      [t("specCollection").toUpperCase(), product.collection],
+                      [t("specCategory").toUpperCase(), product.category],
+                      [t("specReference").toUpperCase(), product.reference ?? product.id],
                       ...specGroups.map((g) => [g.name.toUpperCase(), selectedSpecs[g.name] || "—"]),
-                      ["SKU ID", activeSku?.id || "—"],
+                      [t("specSkuId").toUpperCase(), activeSku?.id || "—"],
                     ].map(([k, v]) => (
-                      <div key={k} className="flex items-start justify-between gap-6 border-b border-border/60 py-2">
-                        <dt className="text-xs tracking-[0.2em] uppercase text-muted-foreground">{k}</dt>
-                        <dd className="text-right text-foreground">{v}</dd>
+                      <div key={k} className="flex items-start justify-between gap-4 md:gap-6 border-b border-border/60 py-2">
+                        <dt className="text-xs tracking-[0.15em] uppercase text-muted-foreground break-words">{k}</dt>
+                        <dd className="text-right text-foreground shrink-0">{v}</dd>
                       </div>
                     ))}
                   </dl>
@@ -305,19 +603,38 @@ export function ProductDetailPage() {
         </div>
       </div>
 
-      <section className="py-20 bg-secondary">
+      <section className="py-12 md:py-20 bg-secondary">
         <div className="max-w-7xl mx-auto px-4 md:px-8">
-          <div className="text-center mb-12">
-            <p className="text-primary text-xs tracking-[0.3em] uppercase mb-2">{t("youMayAlsoLike")}</p>
-            <h2 className="text-2xl md:text-3xl text-foreground" style={{ fontFamily: "'Playfair Display', serif" }}>{t("recommended")}</h2>
+          <div className="text-center mb-8 md:mb-12">
+            <p className="text-primary text-xs tracking-[0.25em] md:tracking-[0.3em] uppercase mb-2">{t("youMayAlsoLike")}</p>
+            <h2 className="text-xl md:text-3xl text-foreground" style={{ fontFamily: "'Playfair Display', serif" }}>{t("recommended")}</h2>
           </div>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-8">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-6 lg:gap-8">
             {recommended.map((p) => (
               <ProductCard key={p.id} product={p} />
             ))}
           </div>
+          {recommendedLoading && (
+            <div className="mt-8 text-center text-muted-foreground text-sm">{t("loadingRecommended")}</div>
+          )}
+          {!recommendedLoading && recommended.length === 0 && (
+            <div className="mt-8 text-center text-muted-foreground text-sm">{t("noRecommended")}</div>
+          )}
         </div>
       </section>
+
+      {mobileCollectionsOpen ? (
+        <div className="fixed inset-0 z-[70] lg:hidden">
+          <button
+            onClick={closeMobileDrawer}
+            className="absolute inset-0 bg-black/45"
+            aria-label="close collections drawer"
+          />
+          <div className="absolute inset-y-0 left-0 w-[88%] max-w-[380px] overflow-hidden bg-white shadow-[0_30px_90px_rgba(0,0,0,0.32)]">
+            {renderMobileDrawerContent()}
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }
