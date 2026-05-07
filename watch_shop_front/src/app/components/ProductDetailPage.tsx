@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useParams, Link, useLocation, useNavigate } from "react-router";
-import { Shield, Truck, RotateCcw, Minus, Plus, ArrowLeft, ArrowRight, X } from "lucide-react";
+import { Shield, Truck, RotateCcw, ArrowLeft, ArrowRight, X, MessageCircle } from "lucide-react";
 import DOMPurify from "dompurify";
 import { type Product, type ProductSku, type SpecGroup } from "../data";
 import { ProductCard } from "./ProductCard";
@@ -53,7 +53,6 @@ export function ProductDetailPage() {
   const { product, loading: productLoading } = usePublicProduct(id);
   const { brands, models } = usePublicTaxonomy();
   const { config } = useCustomerService();
-  const [quantity, setQuantity] = useState(1);
   const [recommended, setRecommended] = useState<Product[]>([]);
   const [recommendedLoading, setRecommendedLoading] = useState(false);
   const [activeMedia, setActiveMedia] = useState(0);
@@ -67,7 +66,6 @@ export function ProductDetailPage() {
   useEffect(() => {
     if (!product) return;
     setActiveMedia(0);
-    setQuantity(1);
     const skus: ProductSku[] = product.skus ?? [];
     const preferred =
       skus.find((s) => s.enabled && s.stock > 0) ?? skus.find((s) => s.enabled) ?? skus[0];
@@ -210,8 +208,6 @@ export function ProductDetailPage() {
   const displayOriginalPrice = activeSku?.originalPrice ?? product.originalPrice;
   const saveAmount =
     displayOriginalPrice && displayOriginalPrice > displayPrice ? displayOriginalPrice - displayPrice : 0;
-  const maxQty = Math.max(1, activeSku?.stock ?? 1);
-  const canBuy = product.status === "on" && Boolean(activeSku?.enabled) && (activeSku?.stock ?? 0) > 0;
   const isOffShelf = product.status !== "on";
 
   const contactHref = (() => {
@@ -227,6 +223,7 @@ export function ProductDetailPage() {
     const text = applyTemplate(tpl, vars).trim();
     return buildWhatsAppHref(config.whatsapp, text);
   })();
+  const contactLabel = t("contactWhatsapp");
 
   const serviceHighlights = [
     { icon: Truck, title: "Preparing Watches", value: "24-48 Hours" },
@@ -443,101 +440,33 @@ export function ProductDetailPage() {
                   </div>
                 )}
 
-                {specGroups.map((group) => {
-                  return (
-                    <div key={group.name}>
-                      <p className="text-xs tracking-[0.25em] uppercase text-muted-foreground mb-3 break-words">
-                        {group.name} · {selectedSpecs[group.name] || "—"}
-                      </p>
-                      <div className="flex gap-2 md:gap-3 flex-wrap">
-                        {group.options.map((opt) => {
-                          const exists = skus.some(
-                            (s) => s.enabled && matchPartial(s, selectedSpecs, group.name) && s.specs[group.name] === opt
-                          );
-                          const hasStock = skus.some(
-                            (s) =>
-                              s.enabled &&
-                              s.stock > 0 &&
-                              matchPartial(s, selectedSpecs, group.name) &&
-                              s.specs[group.name] === opt
-                          );
-                          const selected = selectedSpecs[group.name] === opt;
-                          const disabled = !hasStock;
-                          return (
-                            <button
-                              key={opt}
-                              disabled={disabled || isOffShelf}
-                              onClick={() => {
-                                setSelectedSpecs((prev) => ({ ...prev, [group.name]: opt }));
-                                setQuantity(1);
-                              }}
-                              className={[
-                                "px-5 py-2 rounded-full text-xs tracking-widest border transition-colors whitespace-nowrap shrink-0",
-                                selected
-                                  ? "bg-primary text-primary-foreground border-primary"
-                                  : "border-border text-muted-foreground hover:border-primary",
-                                disabled || isOffShelf ? "opacity-40 cursor-not-allowed" : "cursor-pointer",
-                                exists && !hasStock && !selected ? "opacity-60" : "",
-                              ].join(" ")}
-                              aria-label={`${group.name}-${opt}`}
-                            >
-                              {opt}
-                            </button>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  );
-                })}
-
-                <div>
-                  <p className="text-xs tracking-[0.2em] md:tracking-[0.25em] uppercase text-muted-foreground mb-3">{t("quantity")}</p>
-                  <div className="inline-flex items-center rounded-full border border-border bg-secondary overflow-hidden">
-                    <button
-                      onClick={() => setQuantity(Math.max(1, quantity - 1))}
-                      disabled={quantity <= 1 || !canBuy}
-                      className="px-3 md:px-4 py-2.5 md:py-3 text-muted-foreground hover:text-primary transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                      aria-label="decrease"
-                    >
-                      <Minus size={12} className="md:size-14" />
-                    </button>
-                    <span className="px-4 md:px-6 py-2.5 md:py-3 text-foreground text-sm">{quantity}</span>
-                    <button
-                      onClick={() => setQuantity(Math.min(maxQty, quantity + 1))}
-                      disabled={quantity >= maxQty || !canBuy}
-                      className="px-3 md:px-4 py-2.5 md:py-3 text-muted-foreground hover:text-primary transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                      aria-label="increase"
-                    >
-                      <Plus size={12} className="md:size-14" />
-                    </button>
-                  </div>
-                  <div className="mt-2 text-xs tracking-[0.15em] uppercase text-muted-foreground">
-                    {activeSku ? `${t("stock")} ${activeSku.stock}` : ""}
-                  </div>
-                </div>
-
                 <div className="flex flex-col gap-3">
                   {contactHref && (
-                    <div className="space-y-2">
-                      <a
-                        href={contactHref}
-                        target="_blank"
-                        rel="noreferrer"
-                        className={[
-                          "inline-flex w-full items-center justify-center rounded-full px-6 md:px-8 py-3 md:py-4 tracking-[0.15em] md:tracking-[0.2em] uppercase text-xs transition-all duration-300",
-                          "border border-border text-muted-foreground hover:border-primary hover:text-primary",
-                        ].join(" ")}
-                      >
-                        {(config.orderButtonLabel && config.orderButtonLabel.trim()) ? config.orderButtonLabel : t("contactWhatsapp")}
-                      </a>
-                      {(config.displayName || config.hours) && (
-                        <div className="text-center text-xs text-muted-foreground">
-                          {config.displayName ? <span>{config.displayName}</span> : null}
-                          {config.displayName && config.hours ? <span> · </span> : null}
-                          {config.hours ? <span>{config.hours}</span> : null}
-                        </div>
-                      )}
-                    </div>
+                    <a
+                      href={contactHref}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="group relative inline-flex min-h-[60px] w-full items-center gap-4 overflow-hidden rounded-full border border-[#25d366]/35 bg-[linear-gradient(135deg,#1db954,#25d366)] px-5 py-3 text-white shadow-[0_18px_38px_rgba(37,211,102,0.22)] transition-all duration-300 hover:-translate-y-0.5 hover:shadow-[0_22px_44px_rgba(37,211,102,0.3)]"
+                    >
+                      <span className="absolute inset-0 rounded-full border border-white/10 opacity-70" />
+                      <span className="absolute left-5 flex h-10 w-10 items-center justify-center">
+                        <span className="absolute h-10 w-10 rounded-full bg-white/20 animate-ping" />
+                        <span className="relative flex h-10 w-10 items-center justify-center rounded-full bg-white/18 backdrop-blur-sm">
+                          <MessageCircle size={18} />
+                        </span>
+                      </span>
+                      <span className="ml-14 min-w-0 flex-1">
+                        <span className="block text-[10px] uppercase tracking-[0.26em] text-white/80">
+                          WhatsApp
+                        </span>
+                        <span className="mt-1 block truncate text-sm font-semibold tracking-[0.08em] md:text-[15px]">
+                          {contactLabel}
+                        </span>
+                      </span>
+                      <span className="shrink-0 rounded-full bg-white/16 px-3 py-1 text-[10px] uppercase tracking-[0.22em] text-white/90">
+                        Live
+                      </span>
+                    </a>
                   )}
                 </div>
 
