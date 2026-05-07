@@ -39,7 +39,11 @@ public class SecurityConfig {
   }
 
   @Bean
-  public SecurityFilterChain filterChain(HttpSecurity http, JwtAuthFilter jwtAuthFilter, LoginRateLimitFilter loginRateLimitFilter) throws Exception {
+  public SecurityFilterChain filterChain(
+      HttpSecurity http,
+      JwtAuthFilter jwtAuthFilter,
+      LoginRateLimitFilter loginRateLimitFilter
+  ) throws Exception {
     return http
         .csrf(csrf -> csrf.disable())
         .cors(Customizer.withDefaults())

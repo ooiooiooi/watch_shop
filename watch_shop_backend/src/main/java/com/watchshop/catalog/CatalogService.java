@@ -167,6 +167,19 @@ public class CatalogService {
         .toList();
   }
 
+  public List<ProductDto> listProductsByIds(List<String> ids, boolean onOnly) {
+    if (ids == null || ids.isEmpty()) return List.of();
+    List<ProductEntity> entities = productRepository.findAllById(ids);
+    java.util.Map<String, ProductEntity> byId = entities.stream()
+        .collect(Collectors.toMap(ProductEntity::getId, it -> it, (a, b) -> a));
+    return ids.stream()
+        .map(byId::get)
+        .filter(Objects::nonNull)
+        .filter(it -> !onOnly || "on".equalsIgnoreCase(it.getStatus()))
+        .map(CatalogService::toDto)
+        .toList();
+  }
+
   @Transactional
   public CategoryDto createCategory(CategoryDto dto) {
     String id = dto.id().trim();

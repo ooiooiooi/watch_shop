@@ -13,7 +13,7 @@ const sections = [
   { id: "faq", key: "faq" },
   { id: "guide", key: "buyingGuide" },
   { id: "contact", key: "contactUs" },
-];
+] as const;
 
 export function AboutPage() {
   const { t, lang } = useI18n();
@@ -60,12 +60,12 @@ export function AboutPage() {
           <div className="space-y-6">
             <p className="text-base leading-relaxed">
               {isZh
-                ? "欢迎访问 Aurelian 官方网站。使用本网站即表示同意以下条款："
-                : "Welcome to Aurelian official website. By using this site, you agree to the following terms:"}
+                ? "欢迎访问 VS Factory 官方网站。使用本网站即表示同意以下条款："
+                : "Welcome to VS Factory official website. By using this site, you agree to the following terms:"}
             </p>
             <div className="space-y-6">
               {[
-                { num: "01", title: isZh ? "网站内容" : "Website Content", content: isZh ? "所有内容包括图片、商标和文字均为 Aurelian 财产，未经许可不得使用。" : "All content including images, trademarks, and text are property of Aurelian and cannot be used without permission." },
+                { num: "01", title: isZh ? "网站内容" : "Website Content", content: isZh ? "所有内容包括图片、商标和文字均为 VS Factory 财产，未经许可不得使用。" : "All content including images, trademarks, and text are property of VS Factory and cannot be used without permission." },
                 { num: "02", title: isZh ? "商品价格" : "Product Prices", content: isZh ? "所有价格以网页显示为准，如有变动恕不另行通知。" : "All prices as shown on the website are subject to change without notice." },
                 { num: "03", title: isZh ? "订单确认" : "Order Confirmation", content: isZh ? "我们保留接受或拒绝任何订单的权利。" : "We reserve the right to accept or reject any order." },
                 { num: "04", title: isZh ? "法律责任" : "Liability", content: isZh ? "本网站信息按'现状'提供，不作任何明示或暗示的保证。" : "Information on this site is provided 'as is' without warranties of any kind." },
@@ -137,7 +137,7 @@ export function AboutPage() {
               <p className="text-sm text-muted-foreground uppercase tracking-widest mt-2">{isZh ? "年全球联保" : "Year International Warranty"}</p>
             </div>
             <p className="text-muted-foreground max-w-xl mx-auto">
-              {isZh ? "所有 Aurelian 腕表提供 5 年全球联保服务。" : "All Aurelian watches come with a 5-year international warranty."}
+              {isZh ? "所有 VS Factory 腕表提供 5 年全球联保服务。" : "All VS Factory watches come with a 5-year international warranty."}
             </p>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 max-w-3xl mx-auto pt-8">
               {[
@@ -311,7 +311,7 @@ export function AboutPage() {
         <div className="relative z-10 text-center px-4">
           <p className="text-primary text-xs tracking-[0.3em] uppercase mb-4">{t("ourHeritage")}</p>
           <h1 className="text-5xl md:text-7xl lg:text-8xl text-white font-extralight tracking-wide" style={{ fontFamily: "'Playfair Display', serif" }}>
-            AURELIAN
+            VS FACTORY
           </h1>
         </div>
       </section>
@@ -347,7 +347,7 @@ export function AboutPage() {
       {/* Footer */}
       <footer className="border-t border-border/50 py-12">
         <div className="max-w-7xl mx-auto px-4 md:px-8 text-center text-muted-foreground text-sm">
-          <p>© 2026 AURELIAN. {t("allRightsReserved")} — {t("footerSince")}</p>
+          <p>© 2026 VS FACTORY. {t("allRightsReserved")} — {t("footerSince")}</p>
         </div>
       </footer>
     </div>

@@ -1,12 +1,15 @@
-import { useState, useEffect, useRef } from "react";
-import { Link } from "react-router";
+import { useState, useEffect } from "react";
+import { Link, useLocation, useNavigate, useSearchParams } from "react-router";
 import { Shield, Droplets, Award, Clock, ChevronRight, ArrowRight } from "lucide-react";
 import { IMAGES } from "../data";
 import { ProductCard } from "./ProductCard";
 import { GoldButton } from "./GoldButton";
 import { useI18n } from "../i18n";
 import { usePublicCatalog } from "../hooks/usePublicCatalog";
+import { usePublicTaxonomy } from "../hooks/usePublicTaxonomy";
+import { getPublicHotProductsConfig, type HotProductsConfig } from "../catalogApi";
 import { resolveMediaUrl } from "../media";
+import { MobileTaxonomyDrawer } from "./MobileTaxonomyDrawer";
 
 function Countdown() {
   const { t } = useI18n();
@@ -42,19 +45,122 @@ function Countdown() {
 }
 
 export function HomePage() {
-  const scrollRef = useRef<HTMLDivElement>(null);
-  const { t } = useI18n();
-  const { products, categories } = usePublicCatalog({ status: "on" });
+  const { t, lang } = useI18n();
+  const navigate = useNavigate();
+  const location = useLocation();
+  const [searchParams] = useSearchParams();
+  const { categories } = usePublicCatalog({ status: "on" });
+  const { brands, models } = usePublicTaxonomy();
+  const [hotConfig, setHotConfig] = useState<HotProductsConfig>({ brands: [] });
+  const [hotLoading, setHotLoading] = useState(true);
+  const [activeHotBrandId, setActiveHotBrandId] = useState("");
+  const [mobileCollectionsOpen, setMobileCollectionsOpen] = useState(false);
+  const [mobileDrawerBrandId, setMobileDrawerBrandId] = useState<string | null>(null);
+
+  useEffect(() => {
+    let alive = true;
+    setHotLoading(true);
+    getPublicHotProductsConfig()
+      .then((config) => {
+        if (!alive) return;
+        setHotConfig({ brands: config.brands ?? [] });
+        setActiveHotBrandId((current) => current || "");
+      })
+      .catch(() => {
+        if (!alive) return;
+        setHotConfig({ brands: [] });
+      })
+      .finally(() => {
+        if (!alive) return;
+        setHotLoading(false);
+      });
+    return () => {
+      alive = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (hotConfig.brands.length === 0) return;
+    if (activeHotBrandId === "") return;
+    if (hotConfig.brands.some((item) => item.brandId === activeHotBrandId)) return;
+    setActiveHotBrandId("");
+  }, [activeHotBrandId, hotConfig.brands]);
+
+  useEffect(() => {
+    const selectedBrand = searchParams.get("brand");
+    setMobileDrawerBrandId(selectedBrand || null);
+  }, [searchParams]);
+
+  useEffect(() => {
+    function handleToggleDrawer() {
+      if (window.innerWidth >= 1024) return;
+      setMobileCollectionsOpen((prev) => !prev);
+    }
+
+    window.addEventListener("toggle-category-drawer", handleToggleDrawer);
+    return () => window.removeEventListener("toggle-category-drawer", handleToggleDrawer);
+  }, []);
+
+  useEffect(() => {
+    function handleResize() {
+      if (window.innerWidth >= 1024) {
+        setMobileCollectionsOpen(false);
+      }
+    }
+
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
+
+  useEffect(() => {
+    window.dispatchEvent(new CustomEvent("category-drawer-state", { detail: { open: mobileCollectionsOpen } }));
+  }, [mobileCollectionsOpen]);
+
+  const activeHotGroup = hotConfig.brands.find((item) => item.brandId === activeHotBrandId) ?? null;
+  const allHotProducts = hotConfig.brands.flatMap((group) => group.products ?? []).filter((product, index, list) => list.findIndex((item) => item.id === product.id) === index);
+  const bestSellerProducts = activeHotBrandId ? activeHotGroup?.products ?? [] : allHotProducts;
+  const bestSellerHref = activeHotGroup?.brandId ? `/category?brand=${encodeURIComponent(activeHotGroup.brandId)}` : "/category";
+  const brandStoryTitle =
+    lang === "zh"
+      ? "VS Factory 是您购买奢华腕表的理想之选"
+      : "VS Factory Is Your Ideal Destination For Luxury Watches";
+  const brandStoryBody =
+    lang === "zh"
+      ? "VS Factory 是一家专营奢华腕表的公司，在纽约、迈阿密和阿斯彭均设有精品店。我们专注于瑞士腕表品牌，包括爱彼(Audemars Piguet)、百达翡丽(Patek Philippe)、理查德·米勒(Richard Mille)和劳力士(Rolex)。我们成功的关键在于拥有丰富的理查德·米勒、爱彼和百达翡丽腕表库存，以及忠实的客户群体。VS Factory 在谷歌上拥有超过 500 条五星好评，这充分证明了客户的信任和忠诚。"
+      : "VS Factory is a luxury watch company with boutiques in New York, Miami, and Aspen. We specialize in Swiss watch brands including Audemars Piguet, Patek Philippe, Richard Mille, and Rolex. Our success is driven by a strong inventory of Richard Mille, Audemars Piguet, and Patek Philippe watches, along with a loyal client base backed by more than 500 five-star Google reviews.";
+
+  function closeMobileDrawer() {
+    setMobileCollectionsOpen(false);
+    const selectedBrand = searchParams.get("brand");
+    setMobileDrawerBrandId(selectedBrand || null);
+  }
+
+  function navigateWithDrawer(path: string) {
+    closeMobileDrawer();
+    navigate(path);
+  }
+
+  function navigateToCategory(brand: string | null, model: string | null) {
+    const params = new URLSearchParams(location.search);
+    params.delete("cat");
+    params.delete("sort");
+    if (!brand || brand === "all") params.delete("brand");
+    else params.set("brand", brand);
+    if (!model || model === "all") params.delete("model");
+    else params.set("model", model);
+    closeMobileDrawer();
+    navigate(`/category${params.toString() ? `?${params.toString()}` : ""}`);
+  }
 
   return (
     <div>
       {/* Hero Banner */}
-      <section className="relative h-screen flex items-center">
+      <section className="relative flex h-[70svh] min-h-[560px] items-center md:h-screen md:min-h-screen">
         <div className="absolute inset-0">
           <img src={IMAGES.banner} alt="Luxury Watch" loading="lazy" decoding="async" className="w-full h-full object-cover" />
           <div className="absolute inset-0 bg-gradient-to-r from-black/90 via-black/60 to-transparent md:from-black/80 md:via-black/50" />
         </div>
-        <div className="relative z-10 max-w-7xl mx-auto px-4 md:px-8 w-full">
+        <div className="relative z-10 mx-auto w-full max-w-7xl px-4 pt-20 pb-12 md:px-8 md:pt-0 md:pb-0">
           <p className="text-primary text-[10px] md:text-xs tracking-[0.3em] md:tracking-[0.4em] uppercase mb-3 md:mb-4">{t("swissCraftsmanship")}</p>
           <h1 className="text-3xl md:text-7xl text-white max-w-xl leading-tight" style={{ fontFamily: "'Playfair Display', serif" }}>
             {t("timePerfected")}
@@ -77,6 +183,7 @@ export function HomePage() {
       </section>
 
       {/* Best Sellers */}
+      {!hotLoading && hotConfig.brands.length > 0 ? (
       <section className="py-16 md:py-28">
         <div className="max-w-7xl mx-auto px-4 md:px-8">
           <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4 mb-8 md:mb-12">
@@ -84,37 +191,80 @@ export function HomePage() {
               <p className="text-primary text-xs tracking-[0.3em] uppercase mb-2">{t("curatedSelection")}</p>
               <h2 className="text-2xl md:text-4xl text-foreground" style={{ fontFamily: "'Playfair Display', serif" }}>{t("bestSellers")}</h2>
             </div>
-            <Link to="/category" className="text-primary text-xs tracking-[0.2em] uppercase flex items-center gap-2 hover:gap-3 transition-all self-start sm:self-auto">
+            <Link to={bestSellerHref} className="text-primary text-xs tracking-[0.2em] uppercase flex items-center gap-2 hover:gap-3 transition-all self-start sm:self-auto">
               {t("viewAll")} <ArrowRight size={14} />
             </Link>
           </div>
-        </div>
-        <div ref={scrollRef} className="flex gap-4 md:gap-6 overflow-x-auto px-4 md:px-8 pb-4 snap-x snap-mandatory" style={{ scrollbarWidth: "none" }}>
-          {products.filter((p) => p.status === "on").map((p) => (
-            <div key={p.id} className="snap-start shrink-0 w-[240px] sm:w-[260px] md:w-[300px]">
-              <ProductCard product={p} />
+
+          {hotConfig.brands.length > 0 ? (
+            <div className="-mx-4 mb-6 flex gap-3 overflow-x-auto px-4 pb-2 md:mx-0 md:px-0" style={{ scrollbarWidth: "none" }}>
+              <button
+                onClick={() => setActiveHotBrandId("")}
+                className={[
+                  "shrink-0 rounded-full border px-5 py-2.5 text-sm transition-all",
+                  activeHotBrandId === ""
+                    ? "border-primary bg-primary text-primary-foreground shadow-[0_14px_30px_rgba(212,179,106,0.22)]"
+                    : "border-border bg-secondary text-muted-foreground hover:border-primary/60 hover:text-primary",
+                ].join(" ")}
+              >
+                {t("all")}
+              </button>
+              {hotConfig.brands.map((group) => (
+                <button
+                  key={group.brandId}
+                  onClick={() => setActiveHotBrandId(group.brandId)}
+                  className={[
+                    "shrink-0 rounded-full border px-5 py-2.5 text-sm transition-all",
+                    activeHotBrandId === group.brandId
+                      ? "border-primary bg-primary text-primary-foreground shadow-[0_14px_30px_rgba(212,179,106,0.22)]"
+                      : "border-border bg-secondary text-muted-foreground hover:border-primary/60 hover:text-primary",
+                  ].join(" ")}
+                >
+                  {group.brandName}
+                </button>
+              ))}
             </div>
-          ))}
+          ) : null}
+
+          <div className="grid grid-cols-2 gap-3 md:grid-cols-4 md:gap-6 xl:grid-cols-5">
+            {bestSellerProducts.map((p) => (
+              <div key={p.id}>
+                  <ProductCard product={p} enableAddToCart />
+              </div>
+            ))}
+          </div>
+
+          {!hotLoading && bestSellerProducts.length === 0 ? (
+            <div className="rounded-2xl border border-border/70 bg-secondary/40 px-4 py-10 text-center text-sm text-muted-foreground">
+              {t("noRecommended")}
+            </div>
+          ) : null}
         </div>
       </section>
+      ) : null}
 
       {/* Categories */}
       <section className="py-16 md:py-28 bg-secondary">
         <div className="max-w-7xl mx-auto px-4 md:px-8">
-          <div className="mb-8 flex items-end justify-between gap-4 md:mb-14">
-            <div className="text-left md:text-center md:w-full">
-              <p className="text-primary text-xs tracking-[0.3em] uppercase mb-2">{t("browse")}</p>
-              <h2 className="text-2xl md:text-4xl text-foreground" style={{ fontFamily: "'Playfair Display', serif" }}>{t("collections")}</h2>
-              <p className="mt-3 max-w-md text-xs leading-relaxed text-muted-foreground md:mx-auto md:text-sm">
-                {t("categoryDesc")}
+          <div className="mb-8 md:mb-14">
+            <div className="rounded-[28px] border border-primary/20 bg-[linear-gradient(180deg,rgba(255,255,255,0.04),rgba(255,255,255,0.02))] px-5 py-6 shadow-[0_24px_70px_rgba(0,0,0,0.16)] md:px-10 md:py-9">
+              <p className="text-primary text-[10px] tracking-[0.3em] uppercase mb-3">{t("browse")}</p>
+              <h2
+                className="max-w-4xl text-2xl leading-tight text-foreground md:text-[42px]"
+                style={{ fontFamily: "'Playfair Display', serif" }}
+              >
+                {brandStoryTitle}
+              </h2>
+              <p className="mt-4 max-w-5xl text-sm leading-7 text-muted-foreground md:text-base">
+                {brandStoryBody}
               </p>
+              <Link
+                to="/about"
+                className="mt-5 inline-flex items-center gap-2 text-primary text-xs tracking-[0.2em] uppercase transition-all hover:gap-3"
+              >
+                了解更多 <ArrowRight size={14} />
+              </Link>
             </div>
-            <Link
-              to="/category"
-              className="hidden md:inline-flex shrink-0 items-center gap-2 text-primary text-xs tracking-[0.2em] uppercase hover:gap-3 transition-all"
-            >
-              {t("viewAll")} <ArrowRight size={14} />
-            </Link>
           </div>
 
           <div className="-mx-4 flex gap-3 overflow-x-auto px-4 pb-3 md:hidden snap-x snap-mandatory">
@@ -223,6 +373,26 @@ export function HomePage() {
           </Link>
         </div>
       </section>
+
+      <MobileTaxonomyDrawer
+        open={mobileCollectionsOpen}
+        onClose={closeMobileDrawer}
+        onNavigateHome={() => navigateWithDrawer("/")}
+        onNavigateAbout={() => navigateWithDrawer("/about")}
+        brands={brands}
+        models={models}
+        viewBrandId={mobileDrawerBrandId}
+        onViewBrandChange={setMobileDrawerBrandId}
+        selectedBrandId={searchParams.get("brand")}
+        selectedModelId={searchParams.get("model")}
+        onSelectModel={(brandId, modelId) => navigateToCategory(brandId, modelId)}
+        allBrandsLabel={t("allBrands")}
+        allModelsLabel={t("allModels")}
+        homeLabel={t("home")}
+        aboutLabel={t("about")}
+        shopByBrandLabel={t("shopByBrand")}
+        brandLabel={t("filterBrand")}
+      />
     </div>
   );
 }

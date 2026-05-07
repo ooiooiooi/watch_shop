@@ -200,7 +200,7 @@ export function CustomerServicePage() {
             className="admin-input w-full"
             value={orderButtonLabel}
             onChange={(e) => setOrderButtonLabel(e.target.value)}
-            placeholder="例如：WhatsApp 联系我们"
+            placeholder="例如：通过 WhatsApp发送询价"
             disabled={loading}
           />
         </div>

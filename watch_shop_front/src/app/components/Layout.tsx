@@ -4,6 +4,8 @@ import { Header } from "./Header";
 import { Footer } from "./Footer";
 import { I18nProvider, useI18n } from "../i18n";
 import { WhatsAppFab } from "./WhatsAppFab";
+import { CartProvider } from "../cart";
+import { ShoppingCartDrawer } from "./ShoppingCartDrawer";
 
 function LayoutContent() {
   const location = useLocation();
@@ -51,6 +53,7 @@ function LayoutContent() {
       </main>
       <Footer />
       <WhatsAppFab />
+      <ShoppingCartDrawer />
     </div>
   );
 }
@@ -58,7 +61,9 @@ function LayoutContent() {
 export function Layout() {
   return (
     <I18nProvider>
-      <LayoutContent />
+      <CartProvider>
+        <LayoutContent />
+      </CartProvider>
     </I18nProvider>
   );
 }

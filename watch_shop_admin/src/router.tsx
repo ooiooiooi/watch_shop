@@ -9,6 +9,8 @@ import { BrandsPage } from "./pages/BrandsPage";
 import { ModelsPage } from "./pages/ModelsPage";
 import { VisitorsPage } from "./pages/VisitorsPage";
 import { CustomerServicePage } from "./pages/CustomerServicePage";
+import { HotProductsPage } from "./pages/HotProductsPage";
+import { MaintenancePage } from "./pages/MaintenancePage";
 
 function requireAdmin() {
   if (!isAdminAuthed()) throw redirect("/login");
@@ -35,6 +37,8 @@ export const router = createHashRouter([
       { path: "models", Component: ModelsPage },
       { path: "visitors", Component: VisitorsPage },
       { path: "customer-service", Component: CustomerServicePage },
+      { path: "hot-products", Component: HotProductsPage },
+      { path: "maintenance", Component: MaintenancePage },
     ],
   },
 ]);

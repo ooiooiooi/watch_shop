@@ -1,13 +1,13 @@
 import { Link, useLocation, useNavigate, useSearchParams } from "react-router";
-import { Search, Menu, X, Globe, ChevronDown, MessageCircle, Watch } from "lucide-react";
+import { Search, Menu, X, Globe, ChevronDown, MessageCircle, ShoppingBag, Watch } from "lucide-react";
 import { useState, useRef, useEffect, useCallback } from "react";
 import { useI18n, LANG_LABELS, type Lang } from "../i18n";
 import { useCustomerService } from "../hooks/useCustomerService";
 import { buildWhatsAppHref } from "../utils/whatsapp";
 import { usePublicTaxonomy } from "../hooks/usePublicTaxonomy";
+import { useCart } from "../cart";
 
 export function Header() {
-  const [menuOpen, setMenuOpen] = useState(false);
   const [categoryDrawerOpen, setCategoryDrawerOpen] = useState(false);
   const [langOpen, setLangOpen] = useState(false);
   const [brandOpen, setBrandOpen] = useState(false);
@@ -16,6 +16,7 @@ export function Header() {
   const { lang, setLang, t } = useI18n();
   const { config } = useCustomerService();
   const { brands } = usePublicTaxonomy();
+  const { totalItems, openCart } = useCart();
   const navigate = useNavigate();
   const location = useLocation();
   const [searchParams] = useSearchParams();
@@ -77,13 +78,7 @@ export function Header() {
   const langs = Object.keys(LANG_LABELS) as Lang[];
   const contactHref = config.whatsapp ? buildWhatsAppHref(config.whatsapp, config.defaultMessage ?? t("csDefaultMessage")) : null;
   const usesTaxonomyDrawer =
-    location.pathname.startsWith("/category") || location.pathname.startsWith("/product/");
-
-  useEffect(() => {
-    if (usesTaxonomyDrawer) {
-      setMenuOpen(false);
-    }
-  }, [usesTaxonomyDrawer]);
+    location.pathname === "/" || location.pathname.startsWith("/category") || location.pathname.startsWith("/product/");
 
   useEffect(() => {
     function handleCategoryDrawerState(event: Event) {
@@ -102,22 +97,19 @@ export function Header() {
   }, [usesTaxonomyDrawer]);
 
   const handleMobileMenuClick = useCallback(() => {
-    if (usesTaxonomyDrawer) {
-      window.dispatchEvent(new Event("toggle-category-drawer"));
-      return;
-    }
-    setMenuOpen((prev) => !prev);
+    if (!usesTaxonomyDrawer) return;
+    window.dispatchEvent(new Event("toggle-category-drawer"));
   }, [usesTaxonomyDrawer]);
 
   return (
     <header className="fixed top-0 left-0 right-0 z-50 bg-background/80 backdrop-blur-md border-b border-border">
       <div className="max-w-7xl mx-auto px-4 md:px-8 flex items-center justify-between h-16 md:h-20">
         <button className="md:hidden text-foreground" onClick={handleMobileMenuClick}>
-          {usesTaxonomyDrawer ? (categoryDrawerOpen ? <X size={20} /> : <Menu size={20} />) : menuOpen ? <X size={20} /> : <Menu size={20} />}
+          {categoryDrawerOpen ? <X size={20} /> : <Menu size={20} />}
         </button>
 
         <Link to="/" className="text-xl tracking-[0.3em] uppercase text-primary" style={{ fontFamily: "'Playfair Display', serif" }}>
-          Aurelian
+          VS Factory
         </Link>
 
         {/* Navigation */}
@@ -262,6 +254,20 @@ export function Header() {
             )}
           </div>
 
+          <button
+            onClick={openCart}
+            className="relative text-muted-foreground hover:text-primary transition-colors"
+            aria-label="open-cart"
+            title={t("cart")}
+          >
+            <ShoppingBag size={18} />
+            {totalItems > 0 ? (
+              <span className="absolute -right-2 -top-2 inline-flex min-w-5 items-center justify-center rounded-full bg-primary px-1.5 py-0.5 text-[10px] font-semibold text-primary-foreground">
+                {totalItems > 99 ? "99+" : totalItems}
+              </span>
+            ) : null}
+          </button>
+
           {contactHref ? (
             <a
               href={contactHref}
@@ -277,28 +283,6 @@ export function Header() {
         </div>
       </div>
 
-      {menuOpen && (
-        <div className="md:hidden bg-background border-t border-border px-4 py-6 space-y-4">
-          <Link to="/" onClick={() => setMenuOpen(false)} className="block text-xs tracking-[0.2em] uppercase text-foreground">{t("home")}</Link>
-          <Link to="/category" onClick={() => setMenuOpen(false)} className="block text-xs tracking-[0.2em] uppercase text-foreground">{t("collections")}</Link>
-          <Link to="/about" onClick={() => setMenuOpen(false)} className="block text-xs tracking-[0.2em] uppercase text-foreground">{t("about")}</Link>
-          <div className="flex gap-2 pt-4 border-t border-border mt-2 flex-wrap">
-            {langs.map((l) => (
-              <button
-                key={l}
-                onClick={() => setLang(l)}
-                className={`text-[10px] tracking-[0.15em] px-3 py-2 border cursor-pointer transition-colors ${
-                  lang === l
-                    ? "border-primary text-primary"
-                    : "border-border text-muted-foreground hover:border-primary"
-                }`}
-              >
-                {LANG_LABELS[l]}
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
     </header>
   );
 }

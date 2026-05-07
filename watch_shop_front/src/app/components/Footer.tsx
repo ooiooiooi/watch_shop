@@ -10,7 +10,7 @@ export function Footer() {
         <div className="grid grid-cols-2 gap-x-5 gap-y-8 md:grid-cols-4 md:gap-8">
           {/* Brand Column */}
           <div className="col-span-2 rounded-3xl border border-border/60 bg-background/40 p-5 md:col-span-1 md:rounded-none md:border-0 md:bg-transparent md:p-0">
-            <h4 className="mb-3 text-xl font-semibold tracking-[0.24em] uppercase md:mb-4 md:text-2xl md:tracking-[0.3em]" style={{ fontFamily: "'Playfair Display', serif" }}>AURELIAN</h4>
+            <h4 className="mb-3 text-xl font-semibold tracking-[0.24em] uppercase md:mb-4 md:text-2xl md:tracking-[0.3em]" style={{ fontFamily: "'Playfair Display', serif" }}>VS FACTORY</h4>
             <p className="mb-4 text-sm leading-6 text-muted-foreground">
               {t("footerDesc")}
             </p>
@@ -70,7 +70,7 @@ export function Footer() {
         {/* Payment & Copyright */}
         <div className="mt-10 flex flex-col gap-4 border-t border-border pt-6 md:mt-12 md:flex-row md:items-center md:justify-between md:pt-8">
           <div className="text-left text-xs leading-5 text-muted-foreground md:text-left">
-            &copy; 2026 AURELIAN. {t("allRightsReserved")} — {t("footerSince")}
+            &copy; 2026 VS FACTORY. {t("allRightsReserved")} — {t("footerSince")}
           </div>
           <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
             <span className="text-xs font-medium" style={{ color: "#1a1f71" }}>VISA</span>

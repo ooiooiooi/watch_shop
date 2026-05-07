@@ -100,6 +100,32 @@ export type CustomerServiceConfig = {
   showBuyButtons: boolean | null;
 };
 
+export type HotProductsBrandGroup = {
+  brandId: string;
+  brandName: string;
+  productIds: string[];
+  products: Product[];
+};
+
+export type HotProductsConfig = {
+  brands: HotProductsBrandGroup[];
+};
+
+export type MaintenanceConfig = {
+  enabled: boolean | null;
+  title: string | null;
+  message: string | null;
+  buttonLabel: string | null;
+};
+
 export async function getPublicCustomerServiceConfig(): Promise<CustomerServiceConfig> {
   return requestJson<CustomerServiceConfig>("/api/public/settings/customer-service");
+}
+
+export async function getPublicHotProductsConfig(): Promise<HotProductsConfig> {
+  return requestJson<HotProductsConfig>("/api/public/settings/hot-products");
+}
+
+export async function getPublicMaintenanceConfig(): Promise<MaintenanceConfig> {
+  return requestJson<MaintenanceConfig>("/api/public/settings/maintenance");
 }

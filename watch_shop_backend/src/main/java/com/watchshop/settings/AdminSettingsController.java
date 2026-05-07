@@ -1,6 +1,8 @@
 package com.watchshop.settings;
 
 import com.watchshop.settings.SettingsDtos.CustomerServiceConfigDto;
+import com.watchshop.settings.SettingsDtos.HotProductsConfigDto;
+import com.watchshop.settings.SettingsDtos.MaintenanceConfigDto;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -25,5 +27,24 @@ public class AdminSettingsController {
   public CustomerServiceConfigDto updateCustomerService(@RequestBody CustomerServiceConfigDto dto) {
     return settingsService.updateCustomerService(dto);
   }
-}
 
+  @GetMapping("/hot-products")
+  public HotProductsConfigDto hotProducts() {
+    return settingsService.getHotProductsForAdmin();
+  }
+
+  @PutMapping("/hot-products")
+  public HotProductsConfigDto updateHotProducts(@RequestBody HotProductsConfigDto dto) {
+    return settingsService.updateHotProducts(dto);
+  }
+
+  @GetMapping("/maintenance")
+  public MaintenanceConfigDto maintenance() {
+    return settingsService.getMaintenanceConfig();
+  }
+
+  @PutMapping("/maintenance")
+  public MaintenanceConfigDto updateMaintenance(@RequestBody MaintenanceConfigDto dto) {
+    return settingsService.updateMaintenanceConfig(dto);
+  }
+}

@@ -15,6 +15,24 @@ export type CustomerServiceConfig = {
   showBuyButtons: boolean | null;
 };
 
+export type HotProductsBrandGroup = {
+  brandId: string;
+  brandName: string;
+  productIds: string[];
+  products?: Product[];
+};
+
+export type HotProductsConfig = {
+  brands: HotProductsBrandGroup[];
+};
+
+export type MaintenanceConfig = {
+  enabled: boolean | null;
+  title: string | null;
+  message: string | null;
+  buttonLabel: string | null;
+};
+
 function decodeJwtPayload(token: string): { exp?: number } | null {
   const parts = token.split(".");
   if (parts.length < 2) return null;
@@ -203,6 +221,7 @@ export async function getProductsPage(params?: {
   category?: string;
   status?: "all" | "on" | "off";
   brand?: string;
+  brandId?: string;
   model?: string;
   q?: string;
   sort?: "featured" | "price-asc" | "price-desc";
@@ -213,6 +232,7 @@ export async function getProductsPage(params?: {
   if (params?.category && params.category !== "all") qs.set("category", params.category);
   if (params?.status && params.status !== "all") qs.set("status", params.status);
   if (params?.brand) qs.set("brand", params.brand);
+  if (params?.brandId) qs.set("brandId", params.brandId);
   if (params?.model) qs.set("model", params.model);
   if (params?.q) qs.set("q", params.q);
   if (params?.sort) qs.set("sort", params.sort);
@@ -273,6 +293,28 @@ export async function getCustomerServiceConfig(): Promise<CustomerServiceConfig>
 
 export async function updateCustomerServiceConfig(input: CustomerServiceConfig): Promise<CustomerServiceConfig> {
   return requestJson<CustomerServiceConfig>("/api/admin/settings/customer-service", {
+    method: "PUT",
+    body: JSON.stringify(input),
+  });
+}
+
+export async function getHotProductsConfig(): Promise<HotProductsConfig> {
+  return requestJson<HotProductsConfig>("/api/admin/settings/hot-products");
+}
+
+export async function updateHotProductsConfig(input: HotProductsConfig): Promise<HotProductsConfig> {
+  return requestJson<HotProductsConfig>("/api/admin/settings/hot-products", {
+    method: "PUT",
+    body: JSON.stringify(input),
+  });
+}
+
+export async function getMaintenanceConfig(): Promise<MaintenanceConfig> {
+  return requestJson<MaintenanceConfig>("/api/admin/settings/maintenance");
+}
+
+export async function updateMaintenanceConfig(input: MaintenanceConfig): Promise<MaintenanceConfig> {
+  return requestJson<MaintenanceConfig>("/api/admin/settings/maintenance", {
     method: "PUT",
     body: JSON.stringify(input),
   });

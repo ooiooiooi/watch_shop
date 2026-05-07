@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useParams, Link, useLocation, useNavigate } from "react-router";
-import { Shield, Truck, RotateCcw, ArrowLeft, ArrowRight, X, MessageCircle } from "lucide-react";
+import { Shield, Truck, RotateCcw, MessageCircle } from "lucide-react";
 import DOMPurify from "dompurify";
 import { type Product, type ProductSku, type SpecGroup } from "../data";
 import { ProductCard } from "./ProductCard";
@@ -14,6 +14,8 @@ import { getPublicRelatedProducts } from "../catalogApi";
 import { useCustomerService } from "../hooks/useCustomerService";
 import { applyTemplate, buildWhatsAppHref } from "../utils/whatsapp";
 import { resolveMediaUrl } from "../media";
+import { useCart } from "../cart";
+import { MobileTaxonomyDrawer } from "./MobileTaxonomyDrawer";
 
 function DetailCountdown() {
   const { t } = useI18n();
@@ -53,6 +55,7 @@ export function ProductDetailPage() {
   const { product, loading: productLoading } = usePublicProduct(id);
   const { brands, models } = usePublicTaxonomy();
   const { config } = useCustomerService();
+  const { addItem } = useCart();
   const [recommended, setRecommended] = useState<Product[]>([]);
   const [recommendedLoading, setRecommendedLoading] = useState(false);
   const [activeMedia, setActiveMedia] = useState(0);
@@ -232,13 +235,6 @@ export function ProductDetailPage() {
     { icon: RotateCcw, title: "Free 14-Days Returns", value: "Patek Philippe Annual Calendar" },
   ];
 
-  const sortedBrands = [...brands].sort((a, b) => a.name.localeCompare(b.name));
-  const mobileDrawerBrandModels = mobileDrawerBrandId
-    ? models.filter((m) => m.brandId === mobileDrawerBrandId).sort((a, b) => a.name.localeCompare(b.name))
-    : [];
-  const mobileDrawerBrandName = mobileDrawerBrandId
-    ? brands.find((b) => b.id === mobileDrawerBrandId)?.name ?? mobileDrawerBrandId
-    : t("allBrands");
   const displayTag = getDisplayTag(product);
 
   function closeMobileDrawer() {
@@ -263,96 +259,19 @@ export function ProductDetailPage() {
     navigate(`/category${params.toString() ? `?${params.toString()}` : ""}`);
   }
 
-  function renderMobileDrawerContent() {
-    const showingModels = mobileDrawerBrandId !== null;
-
-    return (
-      <div className="flex h-full min-w-0 flex-1 flex-col bg-secondary text-foreground">
-        <div className="flex items-center justify-between border-b border-border/70 px-4 py-5">
-          <button
-            onClick={() => navigateWithDrawer("/")}
-            className="text-left text-base tracking-[0.12em] uppercase text-primary transition-colors hover:text-primary/80"
-            style={{ fontFamily: "'Playfair Display', serif" }}
-          >
-            {t("home")}
-          </button>
-          <button
-            onClick={closeMobileDrawer}
-            className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-border/60 text-muted-foreground transition-colors hover:border-primary/50 hover:text-primary"
-          >
-            <X size={18} />
-          </button>
-        </div>
-
-        <div className="flex items-center justify-between border-b border-border/70 px-4 py-4">
-          <div className="min-w-0">
-            <div className="text-[10px] tracking-[0.22em] uppercase text-muted-foreground">{t("shopByBrand")}</div>
-            <div className="mt-1 truncate text-lg text-foreground" style={{ fontFamily: "'Playfair Display', serif" }}>
-              {showingModels ? mobileDrawerBrandName : t("filterBrand")}
-            </div>
-          </div>
-        </div>
-
-        {showingModels ? (
-          <div className="flex min-h-0 flex-1 flex-col">
-            <button
-              onClick={() => setMobileDrawerBrandId(null)}
-              className="flex items-center gap-2 border-b border-border/60 px-4 py-3 text-left text-sm text-muted-foreground transition-colors hover:bg-background/40 hover:text-primary"
-            >
-              <ArrowLeft size={16} />
-              {t("allBrands")}
-            </button>
-            <button
-              onClick={() => navigateToCategory(mobileDrawerBrandId, "all")}
-              className={`border-b border-border/60 px-4 py-4 text-left text-[15px] transition-colors ${(!selectedModelId || selectedModelId === "all") && selectedBrandId === mobileDrawerBrandId ? "bg-background/80 font-medium text-primary" : "text-foreground hover:bg-background/40"}`}
-            >
-              {t("allModels")}
-            </button>
-            <div className="min-h-0 flex-1 overflow-y-auto">
-              {mobileDrawerBrandModels.map((m) => {
-                const active = selectedBrandId === mobileDrawerBrandId && selectedModelId === m.id;
-                return (
-                  <button
-                    key={m.id}
-                    onClick={() => navigateToCategory(mobileDrawerBrandId, m.id)}
-                    className={`flex w-full items-center justify-between border-b border-border/60 px-4 py-4 text-left text-[15px] transition-colors ${active ? "bg-background/80 font-medium text-primary" : "text-foreground hover:bg-background/40"}`}
-                  >
-                    <span className="truncate">{m.name}</span>
-                    <ArrowRight size={15} className={active ? "shrink-0 text-primary/70" : "shrink-0 text-muted-foreground"} />
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-        ) : (
-          <div className="min-h-0 flex-1 overflow-y-auto">
-            {sortedBrands.map((brand) => {
-              const active = selectedBrandId === brand.id;
-              return (
-                <button
-                  key={brand.id}
-                  onClick={() => setMobileDrawerBrandId(brand.id)}
-                  className={`flex w-full items-center justify-between border-b border-border/60 px-4 py-4 text-left text-[15px] transition-colors ${active ? "bg-background/80 font-medium text-primary" : "text-foreground hover:bg-background/40"}`}
-                >
-                  <span className="truncate">{brand.name}</span>
-                  <ArrowRight size={16} className={active ? "shrink-0 text-primary/70" : "shrink-0 text-muted-foreground"} />
-                </button>
-              );
-            })}
-          </div>
-        )}
-
-        <div className="border-t border-border/70 px-4 py-5">
-          <button
-            onClick={() => navigateWithDrawer("/about")}
-            className="text-left text-base tracking-[0.12em] uppercase text-primary transition-colors hover:text-primary/80"
-            style={{ fontFamily: "'Playfair Display', serif" }}
-          >
-            {t("about")}
-          </button>
-        </div>
-      </div>
-    );
+  function handleAddToCart() {
+    if (!product) return;
+    addItem({
+      productId: product.id,
+      skuId: activeSku?.id ?? null,
+      name: product.name,
+      brand: product.brand ?? null,
+      collection: product.collection ?? null,
+      image: heroImage ?? product.image ?? null,
+      price: displayPrice,
+      quantity: 1,
+      specs: activeSku?.specs ?? selectedSpecs,
+    });
   }
 
   return (
@@ -441,6 +360,13 @@ export function ProductDetailPage() {
                 )}
 
                 <div className="flex flex-col gap-3">
+                  <button
+                    onClick={handleAddToCart}
+                    disabled={isOffShelf}
+                    className="inline-flex min-h-[60px] w-full items-center justify-center rounded-full border border-primary/35 bg-secondary px-5 py-3 text-sm font-semibold tracking-[0.08em] text-foreground transition-all duration-300 hover:-translate-y-0.5 hover:border-primary hover:text-primary disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    {t("addToCart")}
+                  </button>
                   {contactHref && (
                     <a
                       href={contactHref}
@@ -552,18 +478,25 @@ export function ProductDetailPage() {
         </div>
       </section>
 
-      {mobileCollectionsOpen ? (
-        <div className="fixed inset-0 z-[70] lg:hidden">
-          <button
-            onClick={closeMobileDrawer}
-            className="absolute inset-0 bg-black/45"
-            aria-label="close collections drawer"
-          />
-          <div className="absolute inset-y-0 left-0 w-[88%] max-w-[380px] overflow-hidden bg-white shadow-[0_30px_90px_rgba(0,0,0,0.32)]">
-            {renderMobileDrawerContent()}
-          </div>
-        </div>
-      ) : null}
+      <MobileTaxonomyDrawer
+        open={mobileCollectionsOpen}
+        onClose={closeMobileDrawer}
+        onNavigateHome={() => navigateWithDrawer("/")}
+        onNavigateAbout={() => navigateWithDrawer("/about")}
+        brands={brands}
+        models={models}
+        viewBrandId={mobileDrawerBrandId}
+        onViewBrandChange={setMobileDrawerBrandId}
+        selectedBrandId={selectedBrandId}
+        selectedModelId={selectedModelId}
+        onSelectModel={(brandId, modelId) => navigateToCategory(brandId, modelId)}
+        allBrandsLabel={t("allBrands")}
+        allModelsLabel={t("allModels")}
+        homeLabel={t("home")}
+        aboutLabel={t("about")}
+        shopByBrandLabel={t("shopByBrand")}
+        brandLabel={t("filterBrand")}
+      />
     </div>
   );
 }

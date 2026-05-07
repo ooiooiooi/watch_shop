@@ -1,11 +1,12 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router";
-import { ArrowLeft, ArrowRight, Minus, Plus, X } from "lucide-react";
+import { ArrowRight, Minus, Plus, X } from "lucide-react";
 import { ProductCard, ProductCardSkeleton } from "./ProductCard";
 import { useI18n } from "../i18n";
 import { usePublicTaxonomy } from "../hooks/usePublicTaxonomy";
 import { getPublicProductsPage } from "../catalogApi";
 import type { Product } from "../data";
+import { MobileTaxonomyDrawer } from "./MobileTaxonomyDrawer";
 
 export function CategoryPage() {
   const { t } = useI18n();
@@ -178,16 +179,6 @@ export function CategoryPage() {
     return models.find((m) => m.id === modelId)?.name ?? modelId;
   }, [models, modelId]);
 
-  const mobileDrawerBrandModels = useMemo(() => {
-    if (!mobileDrawerBrandId) return [];
-    return models.filter((m) => m.brandId === mobileDrawerBrandId).sort((a, b) => a.name.localeCompare(b.name));
-  }, [models, mobileDrawerBrandId]);
-
-  const mobileDrawerBrandName = useMemo(() => {
-    if (!mobileDrawerBrandId) return t("allBrands");
-    return brands.find((b) => b.id === mobileDrawerBrandId)?.name ?? mobileDrawerBrandId;
-  }, [brands, mobileDrawerBrandId, t]);
-
   function closeMobileDrawer() {
     setMobileCollectionsOpen(false);
     setMobileDrawerBrandId(brandId === "all" ? null : brandId);
@@ -196,111 +187,6 @@ export function CategoryPage() {
   function handleMobileDrawerNavigate(path: string) {
     closeMobileDrawer();
     navigate(path);
-  }
-
-  function renderMobileDrawerContent() {
-    const showingModels = mobileDrawerBrandId !== null;
-
-    return (
-      <div className="flex h-full min-w-0 flex-1 flex-col bg-secondary text-foreground">
-        <div className="flex items-center justify-between border-b border-border/70 px-4 py-5">
-          <button
-            onClick={() => handleMobileDrawerNavigate("/")}
-            className="text-left text-base tracking-[0.12em] uppercase text-primary transition-colors hover:text-primary/80"
-            style={{ fontFamily: "'Playfair Display', serif" }}
-          >
-            {t("home")}
-          </button>
-          <button
-            onClick={closeMobileDrawer}
-            className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-border/60 text-muted-foreground transition-colors hover:border-primary/50 hover:text-primary"
-          >
-            <X size={18} />
-          </button>
-        </div>
-
-        <div className="flex items-center justify-between border-b border-border/70 px-4 py-4">
-          <div className="min-w-0">
-            <div className="text-[10px] tracking-[0.22em] uppercase text-muted-foreground">{t("shopByBrand")}</div>
-            <div className="mt-1 truncate text-lg text-foreground" style={{ fontFamily: "'Playfair Display', serif" }}>
-              {showingModels ? mobileDrawerBrandName : t("filterBrand")}
-            </div>
-          </div>
-        </div>
-
-        {showingModels ? (
-          <div className="flex min-h-0 flex-1 flex-col">
-            <button
-              onClick={() => setMobileDrawerBrandId(null)}
-              className="flex items-center gap-2 border-b border-border/60 px-4 py-3 text-left text-sm text-muted-foreground transition-colors hover:bg-background/40 hover:text-primary"
-            >
-              <ArrowLeft size={16} />
-              {t("allBrands")}
-            </button>
-            <button
-              onClick={() => {
-                setBrandId(mobileDrawerBrandId);
-                setModelId("all");
-                setExpandedBrandId(mobileDrawerBrandId);
-                resetBrowsePosition();
-                updateUrl({ brand: mobileDrawerBrandId, model: "all" });
-                closeMobileDrawer();
-              }}
-              className={`border-b border-border/60 px-4 py-4 text-left text-[15px] transition-colors ${modelId === "all" && brandId === mobileDrawerBrandId ? "bg-background/80 font-medium text-primary" : "text-foreground hover:bg-background/40"}`}
-            >
-              {t("allModels")}
-            </button>
-            <div className="min-h-0 flex-1 overflow-y-auto">
-              {mobileDrawerBrandModels.map((m) => {
-                const active = brandId === mobileDrawerBrandId && modelId === m.id;
-                return (
-                  <button
-                    key={m.id}
-                    onClick={() => {
-                      setBrandId(mobileDrawerBrandId);
-                      setModelId(m.id);
-                      resetBrowsePosition();
-                      updateUrl({ brand: mobileDrawerBrandId, model: m.id });
-                      closeMobileDrawer();
-                    }}
-                    className={`flex w-full items-center justify-between border-b border-border/60 px-4 py-4 text-left text-[15px] transition-colors ${active ? "bg-background/80 font-medium text-primary" : "text-foreground hover:bg-background/40"}`}
-                  >
-                    <span className="truncate">{m.name}</span>
-                    <ArrowRight size={15} className={active ? "shrink-0 text-primary/70" : "shrink-0 text-muted-foreground"} />
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-        ) : (
-          <div className="min-h-0 flex-1 overflow-y-auto">
-            {sortedBrands.map((brand) => {
-              const active = brandId === brand.id;
-              return (
-                <button
-                  key={brand.id}
-                  onClick={() => setMobileDrawerBrandId(brand.id)}
-                  className={`flex w-full items-center justify-between border-b border-border/60 px-4 py-4 text-left text-[15px] transition-colors ${active ? "bg-background/80 font-medium text-primary" : "text-foreground hover:bg-background/40"}`}
-                >
-                  <span className="truncate">{brand.name}</span>
-                  <ArrowRight size={16} className={active ? "shrink-0 text-primary/70" : "shrink-0 text-muted-foreground"} />
-                </button>
-              );
-            })}
-          </div>
-        )}
-
-        <div className="border-t border-border/70 px-4 py-5">
-          <button
-            onClick={() => handleMobileDrawerNavigate("/about")}
-            className="text-left text-base tracking-[0.12em] uppercase text-primary transition-colors hover:text-primary/80"
-            style={{ fontFamily: "'Playfair Display', serif" }}
-          >
-            {t("about")}
-          </button>
-        </div>
-      </div>
-    );
   }
 
   const renderSidebarContent = (isMobile?: boolean) => (
@@ -492,18 +378,32 @@ export function CategoryPage() {
         </div>
       </div>
 
-      {mobileCollectionsOpen ? (
-        <div className="fixed inset-0 z-[70] lg:hidden">
-          <button
-            onClick={closeMobileDrawer}
-            className="absolute inset-0 bg-black/45"
-            aria-label="close collections drawer"
-          />
-          <div className="absolute inset-y-0 left-0 w-[88%] max-w-[380px] overflow-hidden bg-white shadow-[0_30px_90px_rgba(0,0,0,0.32)]">
-            {renderMobileDrawerContent()}
-          </div>
-        </div>
-      ) : null}
+      <MobileTaxonomyDrawer
+        open={mobileCollectionsOpen}
+        onClose={closeMobileDrawer}
+        onNavigateHome={() => handleMobileDrawerNavigate("/")}
+        onNavigateAbout={() => handleMobileDrawerNavigate("/about")}
+        brands={brands}
+        models={models}
+        viewBrandId={mobileDrawerBrandId}
+        onViewBrandChange={setMobileDrawerBrandId}
+        selectedBrandId={selectedBrandId}
+        selectedModelId={selectedModelId}
+        onSelectModel={(nextBrandId, nextModelId) => {
+          setBrandId(nextBrandId);
+          setModelId(nextModelId ?? "all");
+          setExpandedBrandId(nextBrandId);
+          resetBrowsePosition();
+          updateUrl({ brand: nextBrandId, model: nextModelId ?? "all" });
+          closeMobileDrawer();
+        }}
+        allBrandsLabel={t("allBrands")}
+        allModelsLabel={t("allModels")}
+        homeLabel={t("home")}
+        aboutLabel={t("about")}
+        shopByBrandLabel={t("shopByBrand")}
+        brandLabel={t("filterBrand")}
+      />
     </div>
   );
 }

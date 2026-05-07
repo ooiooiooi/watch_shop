@@ -1,5 +1,5 @@
 import { Link, NavLink, Outlet, useNavigate } from "react-router-dom";
-import { LayoutDashboardIcon, PackageIcon, TagsIcon, LogOutIcon, BadgeIcon, LayersIcon, HeadsetIcon, KeyRoundIcon, RadarIcon } from "lucide-react";
+import { LayoutDashboardIcon, PackageIcon, TagsIcon, LogOutIcon, BadgeIcon, LayersIcon, HeadsetIcon, KeyRoundIcon, RadarIcon, FlameIcon, ShieldAlertIcon } from "lucide-react";
 import { logoutAdmin } from "../auth/adminAuth";
 import { changePassword } from "../api/adminApi";
 
@@ -10,7 +10,9 @@ const nav = [
   { to: "/brands", label: "品牌管理", icon: BadgeIcon },
   { to: "/models", label: "型号管理", icon: LayersIcon },
   { to: "/visitors", label: "访客记录", icon: RadarIcon },
+  { to: "/hot-products", label: "热门商品", icon: FlameIcon },
   { to: "/customer-service", label: "客服配置", icon: HeadsetIcon },
+  { to: "/maintenance", label: "维护模式", icon: ShieldAlertIcon },
 ];
 
 export function AdminLayout() {
