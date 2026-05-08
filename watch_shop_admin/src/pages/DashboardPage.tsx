@@ -7,6 +7,7 @@ import {
   ArrowUpIcon,
   EyeIcon,
   GlobeIcon,
+  MessageCircleIcon,
   MousePointerClickIcon,
   TrendingUpIcon,
   UsersIcon,
@@ -317,6 +318,18 @@ export function DashboardPage() {
             value={loadingStats ? "..." : (stats?.totalUniqueVisitors ?? 0).toLocaleString()}
             icon={<GlobeIcon size={18} />}
             meta={<div className="text-xs text-[var(--muted)]">历史总 UV，反映触达用户规模</div>}
+          />
+          <StatCard
+            title="今日咨询人数"
+            value={loadingStats ? "..." : (stats?.todayInquiryUsers ?? 0).toLocaleString()}
+            icon={<MessageCircleIcon size={18} />}
+            meta={<div className="text-xs text-[var(--muted)]">当天点击 WhatsApp 发起咨询的独立人数</div>}
+          />
+          <StatCard
+            title="累计咨询人数"
+            value={loadingStats ? "..." : (stats?.totalInquiryUsers ?? 0).toLocaleString()}
+            icon={<MessageCircleIcon size={18} />}
+            meta={<div className="text-xs text-[var(--muted)]">历史累计发起咨询的独立人数</div>}
           />
         </div>
       </div>

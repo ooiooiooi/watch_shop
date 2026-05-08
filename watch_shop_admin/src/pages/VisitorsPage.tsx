@@ -29,6 +29,27 @@ function summarizeDevice(userAgent: string | null) {
   return "其他设备";
 }
 
+function formatEventType(type: string | null) {
+  return type === "INQUIRY" ? "咨询事件" : "访问事件";
+}
+
+function formatEventSource(source: string | null) {
+  switch (source) {
+    case "header":
+      return "头部按钮";
+    case "floating_fab":
+      return "悬浮按钮";
+    case "shopping_cart":
+      return "购物车";
+    case "product_detail":
+      return "商品详情";
+    case "maintenance_page":
+      return "维护页";
+    default:
+      return source || "-";
+  }
+}
+
 function StatTile({ icon, label, value, hint }: { icon: React.ReactNode; label: string; value: string; hint: string }) {
   return (
     <div className="rounded-2xl admin-panel p-5">
@@ -103,7 +124,7 @@ export function VisitorsPage() {
             </div>
             <h1 className="mt-4 text-3xl font-semibold tracking-[0.08em] text-[var(--gold-2)]">访客访问明细</h1>
             <p className="mt-2 max-w-3xl text-sm leading-6 text-[var(--muted)]">
-              查看最近访问者的 IP、访问时间、页面路径、来源地址和设备信息，方便排查流量来源与异常访问。
+              查看最近访问与咨询记录的 IP、来源页面、咨询入口和设备信息，方便排查真实询盘来源。
             </p>
           </div>
           <div className="rounded-2xl border border-[var(--line)] bg-[rgba(255,255,255,0.02)] px-4 py-3 text-sm text-[var(--muted)]">
@@ -122,7 +143,7 @@ export function VisitorsPage() {
         <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
           <div>
             <div className="text-lg font-medium text-[var(--text)]">筛选记录</div>
-            <div className="mt-1 text-sm text-[var(--muted)]">支持搜索 IP、页面路径、来源地址和设备信息</div>
+            <div className="mt-1 text-sm text-[var(--muted)]">支持搜索 IP、事件类型、页面路径、来源地址和设备信息</div>
           </div>
           <div className="flex w-full flex-col gap-2 sm:flex-row lg:max-w-xl">
             <div className="relative flex-1">
@@ -137,7 +158,7 @@ export function VisitorsPage() {
                     setQuery(input.trim());
                   }
                 }}
-                placeholder="搜索 IP、页面、来源、设备"
+                placeholder="搜索 IP、事件、页面、来源、设备"
               />
             </div>
             <button
@@ -168,12 +189,25 @@ export function VisitorsPage() {
                 <div className="min-w-0 flex-1 space-y-3">
                   <div className="flex flex-wrap items-center gap-2 text-xs uppercase tracking-[0.2em]">
                     <span className="rounded-full bg-[rgba(201,169,110,0.12)] px-3 py-1 text-[var(--gold-2)]">IP {item.ipAddress ?? "-"}</span>
+                    <span className={`rounded-full px-3 py-1 ${item.eventType === "INQUIRY" ? "bg-emerald-500/15 text-emerald-200" : "bg-white/6 text-[var(--muted)]"}`}>
+                      {formatEventType(item.eventType)}
+                    </span>
                     <span className="rounded-full bg-white/6 px-3 py-1 text-[var(--muted)]">{summarizeDevice(item.userAgent)}</span>
+                  </div>
+
+                  <div>
+                    <div className="text-xs tracking-[0.2em] uppercase text-[var(--muted)]">咨询入口</div>
+                    <div className="mt-1 break-all text-sm text-[var(--text)]">{formatEventSource(item.eventSource)}</div>
                   </div>
 
                   <div>
                     <div className="text-xs tracking-[0.2em] uppercase text-[var(--muted)]">页面路径</div>
                     <div className="mt-1 break-all text-sm font-medium text-[var(--text)]">{item.pagePath || "-"}</div>
+                  </div>
+
+                  <div>
+                    <div className="text-xs tracking-[0.2em] uppercase text-[var(--muted)]">商品 ID</div>
+                    <div className="mt-1 break-all text-sm text-[var(--muted)]">{item.productId || "-"}</div>
                   </div>
 
                   <div>

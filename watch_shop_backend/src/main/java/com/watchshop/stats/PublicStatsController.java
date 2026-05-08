@@ -18,6 +18,13 @@ public class PublicStatsController {
         String referrer
     ) {}
 
+    public record InquiryPayload(
+        String pagePath,
+        String referrer,
+        String source,
+        String productId
+    ) {}
+
     private final VisitLogRepository visitLogRepository;
 
     public PublicStatsController(VisitLogRepository visitLogRepository) {
@@ -31,11 +38,32 @@ public class PublicStatsController {
         String url = trimValue(payload != null && payload.referrer() != null ? payload.referrer() : request.getHeader("Referer"));
         String pagePath = trimValue(payload != null ? payload.pagePath() : null);
 
-        VisitLogEntity log = new VisitLogEntity(ipAddress, userAgent, url, LocalDateTime.now());
-        log.setPagePath(pagePath);
+        VisitLogEntity log = buildLog(ipAddress, userAgent, url, pagePath);
+        log.setEventType(VisitLogEntity.EVENT_VISIT);
         visitLogRepository.save(log);
 
         return ResponseEntity.ok().build();
+    }
+
+    @PostMapping("/inquiries")
+    public ResponseEntity<Void> recordInquiry(@RequestBody(required = false) InquiryPayload payload, HttpServletRequest request) {
+        String ipAddress = getClientIp(request);
+        String userAgent = trimValue(request.getHeader("User-Agent"));
+        String url = trimValue(payload != null && payload.referrer() != null ? payload.referrer() : request.getHeader("Referer"));
+        String pagePath = trimValue(payload != null ? payload.pagePath() : null);
+
+        VisitLogEntity log = buildLog(ipAddress, userAgent, url, pagePath);
+        log.setEventType(VisitLogEntity.EVENT_INQUIRY);
+        log.setEventSource(trimValue(payload != null ? payload.source() : null));
+        log.setProductId(trimValue(payload != null ? payload.productId() : null));
+        visitLogRepository.save(log);
+        return ResponseEntity.ok().build();
+    }
+
+    private VisitLogEntity buildLog(String ipAddress, String userAgent, String url, String pagePath) {
+        VisitLogEntity log = new VisitLogEntity(ipAddress, userAgent, url, LocalDateTime.now());
+        log.setPagePath(pagePath);
+        return log;
     }
 
     private String trimValue(String value) {

@@ -6,6 +6,7 @@ import { useCustomerService } from "../hooks/useCustomerService";
 import { buildWhatsAppHref } from "../utils/whatsapp";
 import { usePublicTaxonomy } from "../hooks/usePublicTaxonomy";
 import { useCart } from "../cart";
+import { recordInquiry } from "../engagement";
 
 export function Header() {
   const [categoryDrawerOpen, setCategoryDrawerOpen] = useState(false);
@@ -273,6 +274,7 @@ export function Header() {
               href={contactHref}
               target="_blank"
               rel="noreferrer"
+              onClick={() => recordInquiry("header")}
               className="text-muted-foreground hover:text-primary transition-colors"
               aria-label="contact-whatsapp-header"
               title={t("contactWhatsapp")}

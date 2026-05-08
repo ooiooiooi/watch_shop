@@ -129,6 +129,7 @@ export type DashboardTrendPoint = {
   label: string;
   visits: number;
   uniqueVisitors: number;
+  inquiries?: number;
 };
 
 export type DashboardStats = {
@@ -136,13 +137,20 @@ export type DashboardStats = {
   todayUniqueVisitors: number;
   totalVisits: number;
   totalUniqueVisitors: number;
+  todayInquiryEvents: number;
+  todayInquiryUsers: number;
+  totalInquiryEvents: number;
+  totalInquiryUsers: number;
   dailyTrend: DashboardTrendPoint[];
 };
 
 export type VisitorLog = {
   id: number;
+  eventType: string | null;
+  eventSource: string | null;
   ipAddress: string | null;
   pagePath: string | null;
+  productId: string | null;
   referrer: string | null;
   userAgent: string | null;
   visitedAt: string;
@@ -155,6 +163,10 @@ export async function getDashboardStats() {
     todayUniqueVisitors: typeof data?.todayUniqueVisitors === "number" ? data.todayUniqueVisitors : 0,
     totalVisits: typeof data?.totalVisits === "number" ? data.totalVisits : 0,
     totalUniqueVisitors: typeof data?.totalUniqueVisitors === "number" ? data.totalUniqueVisitors : 0,
+    todayInquiryEvents: typeof data?.todayInquiryEvents === "number" ? data.todayInquiryEvents : 0,
+    todayInquiryUsers: typeof data?.todayInquiryUsers === "number" ? data.todayInquiryUsers : 0,
+    totalInquiryEvents: typeof data?.totalInquiryEvents === "number" ? data.totalInquiryEvents : 0,
+    totalInquiryUsers: typeof data?.totalInquiryUsers === "number" ? data.totalInquiryUsers : 0,
     dailyTrend: Array.isArray(data?.dailyTrend) ? data.dailyTrend : [],
   } satisfies DashboardStats;
 }

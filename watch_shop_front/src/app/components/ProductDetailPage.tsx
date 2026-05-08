@@ -16,6 +16,7 @@ import { applyTemplate, buildWhatsAppHref } from "../utils/whatsapp";
 import { resolveMediaUrl } from "../media";
 import { useCart } from "../cart";
 import { MobileTaxonomyDrawer } from "./MobileTaxonomyDrawer";
+import { recordInquiry } from "../engagement";
 
 function DetailCountdown() {
   const { t } = useI18n();
@@ -372,6 +373,7 @@ export function ProductDetailPage() {
                       href={contactHref}
                       target="_blank"
                       rel="noreferrer"
+                      onClick={() => recordInquiry("product_detail", { productId: product.id })}
                       className="group relative inline-flex min-h-[60px] w-full items-center gap-4 overflow-hidden rounded-full border border-[#25d366]/35 bg-[linear-gradient(135deg,#1db954,#25d366)] px-5 py-3 text-white shadow-[0_18px_38px_rgba(37,211,102,0.22)] transition-all duration-300 hover:-translate-y-0.5 hover:shadow-[0_22px_44px_rgba(37,211,102,0.3)]"
                     >
                       <span className="absolute inset-0 rounded-full border border-white/10 opacity-70" />

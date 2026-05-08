@@ -1,5 +1,6 @@
 import { buildWhatsAppHref } from "../utils/whatsapp";
 import type { CustomerServiceConfig, MaintenanceConfig } from "../catalogApi";
+import { recordInquiry } from "../engagement";
 
 type MaintenancePageProps = {
   config: MaintenanceConfig;
@@ -32,6 +33,7 @@ export function MaintenancePage({ config, customerService }: MaintenancePageProp
                 href={whatsappHref}
                 target="_blank"
                 rel="noreferrer"
+                onClick={() => recordInquiry("maintenance_page")}
                 className="inline-flex min-h-11 items-center justify-center rounded-full bg-[linear-gradient(180deg,#e7c98f,#c7a160)] px-6 text-sm font-medium text-[#17120a] transition hover:opacity-95"
               >
                 {buttonLabel}

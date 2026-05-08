@@ -3,6 +3,7 @@ import { MessageCircle } from "lucide-react";
 import { useCustomerService } from "../hooks/useCustomerService";
 import { buildWhatsAppHref } from "../utils/whatsapp";
 import { useI18n } from "../i18n";
+import { recordInquiry } from "../engagement";
 
 export function WhatsAppFab() {
   const { t } = useI18n();
@@ -23,6 +24,7 @@ export function WhatsAppFab() {
         href={href}
         target="_blank"
         rel="noreferrer"
+        onClick={() => recordInquiry("floating_fab")}
         className="flex h-12 w-12 items-center justify-center rounded-full border border-border/70 bg-secondary text-foreground shadow-[0_10px_24px_rgba(0,0,0,0.2)] transition-colors hover:border-primary hover:text-primary md:h-12 md:w-12"
         aria-label="contact-whatsapp"
         title={t("contactWhatsapp")}

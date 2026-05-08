@@ -6,9 +6,12 @@ import java.time.LocalDateTime;
 @Entity
 @Table(name = "visit_logs", indexes = {
     @Index(name = "idx_visit_visited_at", columnList = "visitedAt"),
-    @Index(name = "idx_visit_ip", columnList = "ipAddress")
+    @Index(name = "idx_visit_ip", columnList = "ipAddress"),
+    @Index(name = "idx_visit_event_type", columnList = "eventType")
 })
 public class VisitLogEntity {
+    public static final String EVENT_VISIT = "VISIT";
+    public static final String EVENT_INQUIRY = "INQUIRY";
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -18,6 +21,9 @@ public class VisitLogEntity {
     private String userAgent;
     private String url;
     private String pagePath;
+    private String eventType;
+    private String eventSource;
+    private String productId;
     
     @Column(nullable = false)
     private LocalDateTime visitedAt;
@@ -45,6 +51,15 @@ public class VisitLogEntity {
 
     public String getPagePath() { return pagePath; }
     public void setPagePath(String pagePath) { this.pagePath = pagePath; }
+
+    public String getEventType() { return eventType; }
+    public void setEventType(String eventType) { this.eventType = eventType; }
+
+    public String getEventSource() { return eventSource; }
+    public void setEventSource(String eventSource) { this.eventSource = eventSource; }
+
+    public String getProductId() { return productId; }
+    public void setProductId(String productId) { this.productId = productId; }
 
     public LocalDateTime getVisitedAt() { return visitedAt; }
     public void setVisitedAt(LocalDateTime visitedAt) { this.visitedAt = visitedAt; }

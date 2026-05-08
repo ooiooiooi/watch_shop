@@ -7,6 +7,7 @@ import { useI18n } from "../i18n";
 import { useCustomerService } from "../hooks/useCustomerService";
 import { resolveMediaUrl } from "../media";
 import { buildWhatsAppHref } from "../utils/whatsapp";
+import { recordInquiry } from "../engagement";
 import { Button } from "./ui/button";
 import { Sheet, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetTitle } from "./ui/sheet";
 
@@ -175,6 +176,7 @@ export function ShoppingCartDrawer() {
                 href={whatsappHref}
                 target="_blank"
                 rel="noreferrer"
+                onClick={() => recordInquiry("shopping_cart")}
                 className="mt-4 inline-flex min-h-[54px] w-full items-center justify-center gap-3 rounded-full border border-[#25d366]/35 bg-[linear-gradient(135deg,#1db954,#25d366)] px-5 py-3 text-sm font-semibold tracking-[0.08em] text-white shadow-[0_18px_38px_rgba(37,211,102,0.22)] transition-all duration-300 hover:-translate-y-0.5 hover:shadow-[0_22px_44px_rgba(37,211,102,0.3)]"
               >
                 <MessageCircle size={18} />
