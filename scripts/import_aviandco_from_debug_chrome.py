@@ -147,11 +147,11 @@ def main() -> int:
             "category": avi.AVI_CATEGORY_ID,
             "description": str(detail.get("description") or name)[:3000],
             "status": "on",
-            "specGroups": [{"name": "Source", "options": ["Avi & Co."]}],
+            "specGroups": [{"name": "Source", "options": ["VS FACTORY"]}],
             "skus": [
                 {
                     "id": (sku or product_id)[:64],
-                    "specs": {"Source": "Avi & Co."},
+                    "specs": {"Source": "VS FACTORY"},
                     "price": float(price),
                     "originalPrice": None,
                     "stock": 1,

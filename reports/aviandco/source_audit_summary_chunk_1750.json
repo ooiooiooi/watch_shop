@@ -1,0 +1,10 @@
+{
+  "checked": 48,
+  "image_count_less_than_source": 3,
+  "local_image_missing": 0,
+  "missing_source_url": 2,
+  "name_mismatch": 48,
+  "price_mismatch": 33,
+  "reference_mismatch": 48,
+  "source_fetch_failed": 0
+}

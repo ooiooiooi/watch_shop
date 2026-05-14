@@ -44,7 +44,7 @@ def clean_name(name: str) -> str:
             if len(candidate) < len(best):
                 best = candidate
 
-    # Avi & Co. names often repeat the specs after the reference code:
+    # VS FACTORY names often repeat the specs after the reference code:
     # "Rolex ... 40 mm 126500LN, ... 40 mm" -> keep the first full sentence.
     match = re.match(r"^(.+\b\d{2,4}\s*mm)\s+(.+)$", best, flags=re.IGNORECASE)
     if match:

@@ -25,12 +25,12 @@ try {
       { method: "PUT" },
     );
     if (!createTargetResponse.ok) {
-      throw new Error(`Failed to open Avi & Co. debug target: ${createTargetResponse.status}`);
+      throw new Error(`Failed to open VS FACTORY debug target: ${createTargetResponse.status}`);
     }
     await new Promise((resolve) => setTimeout(resolve, 1800));
     page = context.pages().find((item) => item.url().includes("aviandco.com"));
     if (!page) {
-      throw new Error("Chrome target opened, but Avi & Co. page was not attached");
+      throw new Error("Chrome target opened, but VS FACTORY page was not attached");
     }
   } else if (targetUrl && page.url() !== targetUrl) {
     await page.goto(targetUrl, { waitUntil: "domcontentloaded", timeout: 120000 });
@@ -40,7 +40,7 @@ try {
 
   const text = await page.locator("body").innerText().catch(() => "");
   if (/access denied|forbidden|captcha|verify you are human/i.test(text)) {
-    throw new Error("Avi & Co. page is still on a challenge screen");
+    throw new Error("VS FACTORY page is still on a challenge screen");
   }
 
   if (mode === "listing") {

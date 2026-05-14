@@ -28,8 +28,8 @@ AVI_USER_AGENT = os.getenv(
 )
 AVI_COOKIE = os.getenv("AVI_COOKIE", "").strip()
 AVI_CATEGORY_ID = os.getenv("AVI_CATEGORY_ID", "aviandco-watches")
-AVI_CATEGORY_NAME = os.getenv("AVI_CATEGORY_NAME", "Avi & Co. Watches")
-AVI_TAG = os.getenv("AVI_TAG", "Avi & Co.")
+AVI_CATEGORY_NAME = os.getenv("AVI_CATEGORY_NAME", "VS FACTORY")
+AVI_TAG = os.getenv("AVI_TAG", "VS FACTORY")
 AVI_FETCH_MODE = os.getenv("AVI_FETCH_MODE", "browser").strip().lower()
 AVI_NODE_BIN = os.getenv(
     "AVI_NODE_BIN",
@@ -506,11 +506,11 @@ def main() -> int:
             "category": AVI_CATEGORY_ID,
             "description": str(detail.get("description") or name)[:3000],
             "status": "on",
-            "specGroups": [{"name": "Source", "options": ["Avi & Co."]}],
+            "specGroups": [{"name": "Source", "options": ["VS FACTORY"]}],
             "skus": [
                 {
                     "id": (sku or product_id)[:64],
-                    "specs": {"Source": "Avi & Co."},
+                    "specs": {"Source": "VS FACTORY"},
                     "price": float(price),
                     "originalPrice": None,
                     "stock": 1,

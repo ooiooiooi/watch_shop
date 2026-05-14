@@ -10,7 +10,7 @@ const browser = await chromium.connectOverCDP(versionInfo.webSocketDebuggerUrl);
 
 try {
   const page = browser.contexts()[0].pages().find((item) => item.url().includes("aviandco.com"));
-  if (!page) throw new Error("Avi & Co. tab not found");
+  if (!page) throw new Error("VS FACTORY tab not found");
   const brandHref = brandUrl || await page.locator("a[href]").evaluateAll((anchors, desiredText) => {
     const item = anchors.find((anchor) => (anchor.textContent || "").trim() === desiredText);
     return item ? item.href : "";

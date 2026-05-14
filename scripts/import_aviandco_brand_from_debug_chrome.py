@@ -27,7 +27,7 @@ DETAIL_HELPER = os.path.join(os.path.dirname(__file__), "aviandco_debug_chrome_f
 BRAND_PREFIXES = [
     "A. Lange & Sohne",
     "Audemars Piguet",
-    "Avi & Co.",
+    "VS FACTORY",
     "Breitling",
     "Breguet",
     "Bvlgari",
@@ -39,7 +39,7 @@ BRAND_PREFIXES = [
     "Girard Perregaux",
     "Grand Seiko",
     "Hublot",
-    "Hue By Avi & Co.",
+    "Hue By VS FACTORY",
     "IWC",
     "Jacob & Co.",
     "Jaeger Lecoultre",
@@ -112,7 +112,7 @@ def infer_brand(name: str, existing: Optional[str]) -> Optional[str]:
     lowered = name.lower()
     for brand in BRAND_PREFIXES:
         if lowered.startswith(brand.lower()):
-            return "Avi & Co." if brand == "Hue By Avi & Co." else brand
+            return "VS FACTORY" if brand == "Hue By VS FACTORY" else brand
     return None
 
 
@@ -193,11 +193,11 @@ def main() -> int:
             "category": avi.AVI_CATEGORY_ID,
             "description": str(detail.get("description") or name)[:3000],
             "status": "on",
-            "specGroups": [{"name": "Source", "options": ["Avi & Co."]}],
+            "specGroups": [{"name": "Source", "options": ["VS FACTORY"]}],
             "skus": [
                 {
                     "id": (sku or product_id)[:64],
-                    "specs": {"Source": "Avi & Co."},
+                    "specs": {"Source": "VS FACTORY"},
                     "price": float(price),
                     "originalPrice": None,
                     "stock": 1,
