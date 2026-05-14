@@ -76,6 +76,10 @@ AVI_MAX_PAGES=1 AVI_IMPORT_LIMIT=20 python3 scripts/import_aviandco_catalog.py
 - `AVI_CLEAR_EXISTING`：是否先清空现有商品、品牌、型号、分类，默认 `false`
 - `AVI_COOKIE`：如果页面出现挑战或登录态校验，可填浏览器 Cookie 后重试
 - `AVI_STORAGE_STATE`：复用已通过验证的浏览器会话状态文件
+- `AVI_PROXY_URL`：代理地址，推荐格式 `http://username:password@host:port`
+- `AVI_PROXY_SERVER` / `AVI_PROXY_USERNAME` / `AVI_PROXY_PASSWORD`：分字段代理配置
+- `AVI_TIMEZONE_ID`：浏览器时区，默认 `America/New_York`
+- `AVI_BROWSER_HEADLESS`：默认 `false`，使用可见浏览器窗口
 
 如果站点弹出浏览器挑战，先做一次可视化预热：
 

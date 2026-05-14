@@ -1,26 +1,107 @@
 #!/usr/bin/env node
 import process from "node:process";
+import { spawn } from "node:child_process";
 import { chromium } from "/Users/mac/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/playwright/index.mjs";
 
 const [, , mode, rawUrl] = process.argv;
 const url = rawUrl || "";
 const timeout = Number(process.env.AVI_BROWSER_TIMEOUT_MS || 90000);
 const waitMs = Number(process.env.AVI_BROWSER_SETTLE_MS || 1800);
-const headless = String(process.env.AVI_BROWSER_HEADLESS || "true").toLowerCase() !== "false";
+const headless = String(process.env.AVI_BROWSER_HEADLESS || "false").toLowerCase() !== "false";
 const storageStatePath = String(process.env.AVI_STORAGE_STATE || "").trim();
 const waitForUnlockMs = Number(process.env.AVI_BROWSER_WAIT_FOR_UNLOCK_MS || 0);
+const timezoneId = String(process.env.AVI_TIMEZONE_ID || "America/New_York").trim();
 const userAgent =
   process.env.AVI_USER_AGENT ||
   "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 Chrome/124.0 Safari/537.36";
+
+async function proxyConfig() {
+  const proxyUrl = String(process.env.AVI_PROXY_URL || "").trim();
+  if (proxyUrl) {
+    const parsed = new URL(proxyUrl.includes("://") ? proxyUrl : `http://${proxyUrl}`);
+    if (parsed.protocol === "socks5:" && (parsed.username || parsed.password)) {
+      return await startSocks5Bridge({
+        host: parsed.hostname,
+        port: Number(parsed.port || 1080),
+        username: decodeURIComponent(parsed.username || ""),
+        password: decodeURIComponent(parsed.password || ""),
+      });
+    }
+    return {
+      server: `${parsed.protocol}//${parsed.hostname}${parsed.port ? `:${parsed.port}` : ""}`,
+      ...(parsed.username ? { username: decodeURIComponent(parsed.username) } : {}),
+      ...(parsed.password ? { password: decodeURIComponent(parsed.password) } : {}),
+    };
+  }
+
+  const server = String(process.env.AVI_PROXY_SERVER || "").trim();
+  if (!server) return undefined;
+  const serverUrl = new URL(server.includes("://") ? server : `http://${server}`);
+  if (serverUrl.protocol === "socks5:" && (process.env.AVI_PROXY_USERNAME || process.env.AVI_PROXY_PASSWORD)) {
+    return await startSocks5Bridge({
+      host: serverUrl.hostname,
+      port: Number(serverUrl.port || 1080),
+      username: process.env.AVI_PROXY_USERNAME || "",
+      password: process.env.AVI_PROXY_PASSWORD || "",
+    });
+  }
+  return {
+    server: server.includes("://") ? server : `http://${server}`,
+    ...(process.env.AVI_PROXY_USERNAME ? { username: process.env.AVI_PROXY_USERNAME } : {}),
+    ...(process.env.AVI_PROXY_PASSWORD ? { password: process.env.AVI_PROXY_PASSWORD } : {}),
+  };
+}
+
+async function startSocks5Bridge({ host, port, username, password }) {
+  const bridgeScript = process.env.AVI_SOCKS5_BRIDGE_SCRIPT || "/Users/mac/workspace/watch_shop/scripts/socks5_auth_bridge.py";
+  const bridge = spawn(
+    "python3",
+    [
+      bridgeScript,
+      "--upstream-host",
+      host,
+      "--upstream-port",
+      String(port),
+      "--username",
+      username,
+      "--password",
+      password,
+    ],
+    { stdio: ["ignore", "pipe", "pipe"] },
+  );
+  const localAddress = await new Promise((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error("socks5 bridge startup timed out")), 15000);
+    bridge.stdout.once("data", (chunk) => {
+      clearTimeout(timer);
+      const line = String(chunk || "").trim();
+      const match = line.match(/^READY\s+(.+)$/);
+      if (!match) {
+        reject(new Error(`unexpected socks5 bridge response: ${line}`));
+        return;
+      }
+      resolve(match[1]);
+    });
+    bridge.once("error", reject);
+    bridge.once("exit", (code) => {
+      reject(new Error(`socks5 bridge exited early with code ${code}`));
+    });
+  });
+  return {
+    server: `socks5://${localAddress}`,
+    bridge,
+  };
+}
 
 if (!mode || !url) {
   console.error("Usage: aviandco_browser_fetch.mjs <listing|detail> <url>");
   process.exit(2);
 }
 
+const resolvedProxy = await proxyConfig();
 const browser = await chromium.launch({
   headless,
   args: ["--disable-blink-features=AutomationControlled"],
+  ...(resolvedProxy ? { proxy: { server: resolvedProxy.server } } : {}),
 });
 
 try {
@@ -28,6 +109,7 @@ try {
     userAgent,
     viewport: { width: 1440, height: 1800 },
     locale: "en-US",
+    timezoneId,
     ...(storageStatePath ? { storageState: storageStatePath } : {}),
   });
 
@@ -59,8 +141,14 @@ try {
 
   let bodyText = await page.locator("body").innerText().catch(() => "");
   if (/access denied|forbidden|captcha|verify you are human/i.test(bodyText) && waitForUnlockMs > 0) {
-    await page.waitForTimeout(waitForUnlockMs);
-    bodyText = await page.locator("body").innerText().catch(() => "");
+    const deadline = Date.now() + waitForUnlockMs;
+    while (Date.now() < deadline) {
+      await page.waitForTimeout(2000);
+      bodyText = await page.locator("body").innerText().catch(() => "");
+      if (!/access denied|forbidden|captcha|verify you are human/i.test(bodyText)) {
+        break;
+      }
+    }
   }
   if (/access denied|forbidden|captcha|verify you are human/i.test(bodyText)) {
     throw new Error(
@@ -150,4 +238,7 @@ try {
   }
 } finally {
   await browser.close();
+  if (resolvedProxy?.bridge) {
+    resolvedProxy.bridge.kill("SIGTERM");
+  }
 }

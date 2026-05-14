@@ -319,6 +319,10 @@ def parse_product_detail(page_html: str, listing: ListingProduct) -> Dict[str, A
 
 def browser_product_detail(listing: ListingProduct) -> Dict[str, Any]:
     payload = browser_fetch("detail", listing.url)
+    return browser_product_detail_from_payload(payload, listing)
+
+
+def browser_product_detail_from_payload(payload: Dict[str, Any], listing: ListingProduct) -> Dict[str, Any]:
     name = compact_text(str(payload.get("name") or "")) or listing.name
     sku = compact_text(str(payload.get("sku") or ""))
     description = compact_text(str(payload.get("description") or "")) or name
