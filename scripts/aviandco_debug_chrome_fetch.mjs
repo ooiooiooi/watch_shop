@@ -33,27 +33,7 @@ try {
       throw new Error("Chrome target opened, but Avi & Co. page was not attached");
     }
   } else if (targetUrl && page.url() !== targetUrl) {
-    const navigated = await page.evaluate((desiredUrl) => {
-      const normalize = (value) => String(value || "").toLowerCase();
-      const direct = [...document.querySelectorAll("a[href]")].find((link) => link.href === desiredUrl);
-      if (direct) {
-        direct.click();
-        return true;
-      }
-      const shopLink = [...document.querySelectorAll("a[href]")].find((link) => {
-        const href = normalize(link.getAttribute("href"));
-        const text = normalize(link.textContent);
-        return href.includes("shop-by-brand") || text.includes("shop by brand");
-      });
-      if (shopLink) {
-        shopLink.click();
-        return true;
-      }
-      return false;
-    }, targetUrl);
-    if (!navigated) {
-      throw new Error("Could not find a normal site link to the Avi & Co. listing page");
-    }
+    await page.goto(targetUrl, { waitUntil: "domcontentloaded", timeout: 120000 });
     await page.waitForLoadState("domcontentloaded", { timeout: 120000 }).catch(() => null);
   }
   await page.waitForTimeout(2500);
@@ -111,6 +91,17 @@ try {
         images: [
           meta('meta[property="og:image"]'),
           ...(Array.isArray(product.image) ? product.image : product.image ? [product.image] : []),
+          ...[...document.querySelectorAll(".product.media img, .fotorama img, img")]
+            .map((image) =>
+              image.getAttribute("data-src") ||
+              image.getAttribute("data-large") ||
+              image.getAttribute("data-full") ||
+              image.getAttribute("srcset")?.split(/\s+/)[0] ||
+              image.currentSrc ||
+              image.src ||
+              "",
+            )
+            .filter((src) => src && !String(src).startsWith("data:")),
         ].filter(Boolean),
         specText: normalize(document.body?.innerText || ""),
       };
